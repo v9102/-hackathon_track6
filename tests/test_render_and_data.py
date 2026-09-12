@@ -11,7 +11,11 @@ from pathlib import Path
 
 from app.agents.planner import _DEFAULT_JD
 from app.tools.jdp_parser import build_role_kb
-from app.tools.latex_renderer import check_pdf_artifact, format_score_estimate, tex_escape
+from app.tools.latex_renderer import (
+    check_pdf_artifact,
+    format_score_estimate,
+    tex_escape,
+)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 

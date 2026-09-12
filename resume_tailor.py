@@ -10,6 +10,24 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
+
+
+# Legacy library API (kept for direct imports, e.g. tests/test_basic.py).
+def compute_match_score(resume_skills: set[str], required_skills: set[str]) -> float:
+    """Fraction of required skills covered by the resume's skills."""
+    if not required_skills:
+        return 0.0
+    return len(set(resume_skills) & set(required_skills)) / len(set(required_skills))
+
+
+def load_resume_pdf(resume_path: Path) -> dict[str, Any]:
+    """Extract full text and canonical skill list from a resume PDF."""
+    from app.tools.jdp_parser import extract_text_from_pdf
+    from app.tools.skills import extract_canonical_skills
+
+    text = extract_text_from_pdf(resume_path)
+    return {"full_text": text, "skills": sorted(extract_canonical_skills(text))}
 
 
 def main() -> None:

@@ -10,6 +10,12 @@ import argparse
 import json
 from pathlib import Path
 
+# Legacy library API (kept for direct imports, e.g. tests/test_basic.py).
+from app.agents.evaluator import (  # noqa: F401
+    compute_ats_match,
+    compute_relevance,
+)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Resume Evaluator (delegates to app.agents.evaluator)")

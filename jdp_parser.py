@@ -10,6 +10,13 @@ import argparse
 import json
 from pathlib import Path
 
+# Legacy library API (kept for direct imports, e.g. tests/test_basic.py).
+from app.tools.jdp_parser import (  # noqa: F401
+    build_role_kb,
+    parse_preferred_skills,
+    parse_required_skills,
+)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Job Description Parser")
@@ -21,7 +28,7 @@ def main() -> None:
     parser.add_argument("--use-tavily", action="store_true", help="Ignored: Tavily enrichment not required")
     args = parser.parse_args()
 
-    from app.tools.jdp_parser import build_role_kb, extract_text_from_pdf
+    from app.tools.jdp_parser import extract_text_from_pdf
 
     jd_text = args.jd or ""
     if not jd_text and args.jd_file:

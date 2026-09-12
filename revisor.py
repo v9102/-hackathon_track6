@@ -9,6 +9,13 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
+
+
+# Legacy library API (kept for direct imports, e.g. tests/test_basic.py).
+def load_evaluation(eval_path: Path) -> dict[str, Any]:
+    """Load an evaluation JSON file produced by the evaluator."""
+    return json.loads(eval_path.read_text(encoding="utf-8"))
 
 
 def main() -> None:

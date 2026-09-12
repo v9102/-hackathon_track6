@@ -89,7 +89,7 @@ hackathon_track6/
 ├── data/sample_jd.txt        # Demo JD that forces the adaptive loop
 ├── Resumes/                  # Candidate resume PDFs
 ├── storage/runs/             # Per-run artifacts (state.json, final report, final PDF)
-├── tests/                    # Test suite (35 tests)
+├── tests/                    # Test suite (63 tests)
 ├── jdp_parser.py             # Root convenience wrapper (JD parsing)
 ├── resume_tailor.py          # Root convenience wrapper (tailoring)
 ├── evaluate_resume.py        # Root convenience wrapper (evaluation)
@@ -143,7 +143,7 @@ verification → storage/runs/<run_id>/tailored_resume_final.pdf + final_report.
 - **Re-evaluation after every revision**: a revision that regresses any score is automatically rolled back.
 - **Final PDF verification**: `check_pdf_artifact` confirms the final PDF exists, has all required sections, and is reasonably sized.
 - **LaTeX template compliance**: Uses the provided `ShaunakMishra_Resume.tex` format via `pdflatex`; renders without `fullpage`/TS1 fontset (uses `geometry` + math bullet labels).
-- **Professional CI**: GitHub Actions runs `ruff check .`, `mypy` on the root wrappers, and the 35 pytest tests (3 end-to-end agentic pipeline tests included).
+- **Professional CI**: GitHub Actions runs `ruff check .`, `mypy` on the root wrappers, and the 63 pytest tests (3 end-to-end agentic pipeline tests included), plus a real `pdflatex` pipeline smoke run.
 
 ## 📊 Output Files Summary
 

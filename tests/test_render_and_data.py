@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from app.agents.planner import _DEFAULT_JD
 from app.tools.jdp_parser import build_role_kb
 from app.tools.latex_renderer import (

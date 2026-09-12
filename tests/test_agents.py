@@ -165,6 +165,93 @@ class TestEvaluationAgent:
         assert evaluation["factuality_score"] < 100
 
 
+class TestDecideNextAction:
+    """Adaptation contract: surface-first, evidence-gated probes, no repeat."""
+
+    @staticmethod
+    def _settings() -> object:
+        from types import SimpleNamespace
+
+        return SimpleNamespace(target_ats=80.0)
+
+    def test_surfaces_supported_skill_first(self) -> None:
+        agent = RevisionAgent()
+        evaluation = {
+            "ats_match_percent": 60.0,
+            "relevance_percent": 60.0,
+            "supported_not_present": ["Python", "TypeScript"],
+            "missing_skills": ["Python"],
+            "unsupported_claims": [],
+        }
+        decision = agent.decide_next_action(
+            evaluation, {"required_skills": ["Python", "TypeScript", "Kafka"]}, {}, self._settings()
+        )
+        assert decision["action"] == "surface_supported_skill"
+        assert decision["target"] == "Python"
+
+    def test_probes_skill_lacking_evidence(self) -> None:
+        agent = RevisionAgent()
+        evaluation = {
+            "ats_match_percent": 60.0,
+            "relevance_percent": 60.0,
+            "supported_not_present": [],
+            "missing_skills": ["Kafka"],
+            "unsupported_claims": [],
+        }
+        decision = agent.decide_next_action(
+            evaluation, {"required_skills": ["Kafka"]}, {}, self._settings()
+        )
+        assert decision["action"] == "surface_unsupported"
+        assert decision["target"] == "Kafka"
+
+    def test_unsatisfiable_skill_is_never_reproposed(self) -> None:
+        agent = RevisionAgent()
+        evaluation = {
+            "ats_match_percent": 60.0,
+            "relevance_percent": 60.0,
+            "supported_not_present": [],
+            "missing_skills": ["Kafka"],
+            "unsupported_claims": [],
+        }
+        decision = agent.decide_next_action(
+            evaluation,
+            {"required_skills": ["Kafka"]},
+            {},
+            self._settings(),
+            unsatisfiable={"Kafka"},
+        )
+        assert decision["action"] == "accept"
+
+    def test_evidence_supported_missing_skill_is_not_probed(self) -> None:
+        agent = RevisionAgent()
+        evaluation = {
+            "ats_match_percent": 60.0,
+            "relevance_percent": 60.0,
+            "supported_not_present": [],
+            "missing_skills": ["Docker"],
+            "unsupported_claims": [],
+        }
+        decision = agent.decide_next_action(
+            evaluation,
+            {"required_skills": ["Docker"]},
+            {"Docker": type("E", (), {"supported": True})()},
+            self._settings(),
+        )
+        assert decision["action"] == "accept"
+
+    def test_accepts_when_targets_met(self) -> None:
+        agent = RevisionAgent()
+        evaluation = {
+            "ats_match_percent": 90.0,
+            "relevance_percent": 90.0,
+            "supported_not_present": [],
+            "missing_skills": [],
+            "unsupported_claims": [],
+        }
+        decision = agent.decide_next_action(evaluation, {"required_skills": []}, {}, self._settings())
+        assert decision["action"] == "accept"
+
+
 class TestRevisionAgent:
     def test_revision_no_flags(self) -> None:
         agent = RevisionAgent()

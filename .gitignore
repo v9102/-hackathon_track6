@@ -37,3 +37,7 @@ env/
 
 # Per-run artifacts (self-contained, reproducible via `python -m app.main run`)
 storage/runs/
+# Stale build/sdist output (keep out of version control)
+build/
+dist/
+*.egg-info/

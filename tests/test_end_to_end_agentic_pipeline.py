@@ -205,3 +205,15 @@ def test_agentic_pipeline_rolls_back_worse_revision(
     # The artifact on disk is the rolled-back (pre-change) version, which still
     # evaluates with the ORIGINAL bullet text.
     assert state.final_status != "accepted"
+
+    # The regressed intermediate PDFs were deleted, not left behind.
+    run_dir = Path(state.run_dir)
+    stale = list(run_dir.glob("tailored_resume_v*.pdf"))
+    assert not stale, "regressed revision artifacts must be removed on rollback"
+
+    # The committed structured state still carries the ORIGINAL bullet text:
+    # the revision truly reverted, it did not silently persist.
+    current = state.structured_resume
+    original_bullets = [b.current for b in current.all_bullets()]
+    for bullet in original_bullets:
+        assert "project tech" not in bullet, "rolled-back text must stay unchanged"

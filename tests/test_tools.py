@@ -161,3 +161,152 @@ class TestExtractTextFromPdf:
 
         text = extract_text_from_pdf(Path("/fake/resume.pdf"))
         assert text == "Python React SQL"
+
+
+class TestSkillNormalization:
+    """Alias mapping must normalize common forms without unsafe equivalences."""
+
+    def test_common_aliases_normalize(self) -> None:
+        from app.tools.skills import normalize_skill
+
+        assert normalize_skill("Node") == "Node.js"
+        assert normalize_skill("NodeJS") == "Node.js"
+        assert normalize_skill("node.js") == "Node.js"
+        assert normalize_skill("JS") == "JavaScript"
+        assert normalize_skill("JavaScript") == "JavaScript"
+        assert normalize_skill("TS") == "TypeScript"
+        assert normalize_skill("K8s") == "Kubernetes"
+        assert normalize_skill("Postgres") == "PostgreSQL"
+
+    def test_technically_distinct_skills_are_not_merged(self) -> None:
+        from app.tools.skills import normalize_skill
+
+        distinct = ["SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis"]
+        normalized = {normalize_skill(s) for s in distinct}
+        assert len(normalized) == len(distinct)
+
+    def test_github_is_not_git(self) -> None:
+        from app.tools.skills import normalize_skill
+
+        assert normalize_skill("Git") != normalize_skill("GitHub")
+
+    def test_nextjs_is_not_react(self) -> None:
+        from app.tools.skills import normalize_skill
+
+        assert normalize_skill("Next.js") != normalize_skill("React")
+
+    def test_unknown_skill_identity(self) -> None:
+        from app.tools.skills import normalize_skill
+
+        assert normalize_skill("Kafka") == "Kafka"
+
+    def test_extraction_uses_canonical_names(self) -> None:
+        from app.tools.skills import extract_canonical_skills
+
+        text = "Built with Node and K8s on Postgres with k8s for the JS frontend."
+        skills = extract_canonical_skills(text)
+        assert "Node.js" in skills
+        assert "Kubernetes" in skills
+        assert "PostgreSQL" in skills
+        assert "JavaScript" in skills
+
+    def test_canonicalize_list_dedupes_aliases(self) -> None:
+        from app.tools.skills import canonicalize_list
+
+        raw = ["node", "Node.js", "js", "JavaScript", "Postgres"]
+        canonical = canonicalize_list(raw)
+        assert canonical == {"Node.js", "JavaScript", "PostgreSQL"}
+
+
+class TestEvidenceClassification:
+    """Required skills must be classified supported/unsupported/unknown."""
+
+    def _resume_with(self):
+        from app.core.models import Bullet, SectionEntry, StructuredResume
+
+        return StructuredResume(
+            name="Jamie Doe",
+            headline="Backend Engineer",
+            skills_lines=["Python, PostgreSQL"],
+            projects=[
+                SectionEntry(
+                    id="project_0",
+                    title="WorkflowOS",
+                    subtitle="Python | PostgreSQL",
+                    meta="2024",
+                    bullets=[
+                        Bullet(
+                            id="project_0_0",
+                            original="Built an ETL pipeline.",
+                            current="Built an ETL pipeline.",
+                            evidence=["WorkflowOS tech stack: Python | PostgreSQL"],
+                        )
+                    ],
+                )
+            ],
+        )
+
+    def test_supported_when_candidate_evidence_exists(self) -> None:
+        from app.tools.evidence import build_evidence_map, required_evidence_summary
+
+        resume = self._resume_with()
+        evidence_map = build_evidence_map(resume)
+        summary = required_evidence_summary(
+            evidence_map, ["Python", "PostgreSQL"], output_skills=set()
+        )
+        assert summary["Python"]["classification"] == "supported"
+        assert summary["PostgreSQL"]["classification"] == "supported"
+
+    def test_unsupported_when_output_claims_without_evidence(self) -> None:
+        from app.tools.evidence import (
+            build_evidence_map,
+            find_unsupported_claims,
+            required_evidence_summary,
+        )
+
+        resume = self._resume_with()
+        evidence_map = build_evidence_map(resume)
+        summary = required_evidence_summary(
+            evidence_map,
+            ["Kafka"],
+            output_skills={"Kafka"},
+        )
+        assert summary["Kafka"]["classification"] == "unsupported"
+
+        claims = find_unsupported_claims(evidence_map, "I can do Kafka and Flink.")
+        assert any("Kafka" in c["claim"] for c in claims)
+
+    def test_unregistered_tech_is_not_falsely_accused(self) -> None:
+        from app.tools.evidence import build_evidence_map, find_unsupported_claims
+
+        resume = self._resume_with()
+        evidence_map = build_evidence_map(resume)
+        claims = find_unsupported_claims(evidence_map, "Familiar with Flink streaming.")
+        assert claims == []  # unknown techs stay UNKNOWN, never falsely called out
+
+    def test_unknown_when_no_evidence_and_not_claimed(
+        self,
+    ) -> None:
+        from app.tools.evidence import build_evidence_map, required_evidence_summary
+
+        resume = self._resume_with()
+        evidence_map = build_evidence_map(resume)
+        summary = required_evidence_summary(
+            evidence_map, ["Kafka"], output_skills=set()
+        )
+        assert summary["Kafka"]["classification"] == "unknown"
+
+    def test_absence_in_other_resumes_is_not_falsity(self) -> None:
+        from app.tools.evidence import (
+            build_evidence_map,
+            find_unsupported_claims,
+            required_evidence_summary,
+        )
+
+        resume = self._resume_with()
+        evidence_map = build_evidence_map(resume)
+        summary = required_evidence_summary(evidence_map, ["Python"], output_skills=set())
+        assert summary["Python"]["classification"] == "supported"
+
+        claims = find_unsupported_claims(evidence_map, resume.full_text())
+        assert not claims

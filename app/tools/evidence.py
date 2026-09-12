@@ -137,17 +137,35 @@ def evidence_for_skill(evidence_map: dict[str, SkillEvidence], skill: str) -> Sk
 
 
 def required_evidence_summary(
-    evidence_map: dict[str, SkillEvidence], required_skills: list[str]
+    evidence_map: dict[str, SkillEvidence],
+    required_skills: list[str],
+    output_skills: set[str] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Summarize, per required skill, support status and sources."""
+    """Summarize, per required skill, support status and sources.
+
+    Verdict classification per skill:
+    - ``supported`` — the candidate's own evidence substantiates the skill.
+    - ``unsupported`` — the skill appears in the rendered output but the
+      candidate's original evidence contains no authentic mention of it.
+    - ``unknown`` — no evidence either way: the skill is required by the JD
+      but is neither evidenced by the candidate nor present in the output.
+    """
+    output_skills = output_skills or set()
     summary: dict[str, dict[str, Any]] = {}
     for raw in required_skills:
         canonical = normalize_skill(raw)
         ev = evidence_for_skill(evidence_map, canonical)
+        if ev is not None and ev.supported:
+            classification = "supported"
+        elif canonical in output_skills:
+            classification = "unsupported"
+        else:
+            classification = "unknown"
         summary[canonical] = {
             "required": True,
             "matched": ev is not None,
             "supported": ev.supported if ev else False,
+            "classification": classification,
             "strength": ev.strength if ev else "missing",
             "sources": ev.sources if ev else [],
         }

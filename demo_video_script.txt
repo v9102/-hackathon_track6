@@ -1,30 +1,43 @@
-Demo Video Script - Autonomous Agentic Resume Tailoring (Goal -> Decision -> Action -> ... -> Outcome)
+Demo Video Script - Autonomous Agentic Resume Tailoring
+(Goal -> Decision -> Action -> Intermediate Result -> Evaluation -> Adaptation -> Re-Evaluation -> Final Verification -> Outcome)
 
-GOAL: Build a truthful, fully autonomous resume tailoring agent that matches a candidate to a role while NEVER fabricating experience. Every logged decision maps to a real, evidence-backed change; rejected ideas are recorded as rejected.
+GOAL: Build a truthful, fully autonomous resume tailoring agent that matches a candidate to a role while NEVER fabricating experience. Every logged decision maps to a real, evidence-backed, PDF-visible change; rejected ideas are recorded as rejected; unsubstantiated claims are removed, not invented.
 
-DEMO PART 1 - The default profile (honest accept): 
-1. Run: python3 -m app.main run
-2. The agent parses the JD into a role knowledge base, parses all 3 candidate resumes (Shaunak, AI/ML Engineer, DevOps Engineer) from PDFs, and evaluates the original resumes (ATS %, relevance %, factuality %, format %).
-3. The planner decides the best action. For the default role profile the original Shaunak resume already meets acceptance, so the agent records 0 decisions and accepts it as-is: final_status = accepted, factuality 100%, a verified final PDF is produced.
-4. Show the run directory storage/runs/<run_id>/ with state.json (full audit trail), final_report.txt, and tailored_resume_final.pdf.
+SETUP (30 seconds, on screen):
+- `pip install -r requirements.txt -r requirements-dev.txt` (runtime = pydantic-settings + streamlit; dev = pytest/pytest-mock/ruff/mypy).
+- `python3 -m pytest -q` -> 86 passed (3 end-to-end agentic pipeline tests + 2 real pdflatex chain tests included). Point at GitHub Actions: it installs poppler-utils, runs ruff + mypy + pytest, and a separate smoke job installs TeX Live and runs the real pipeline.
+
+DEMO PART 1 - The default profile (honest accept):
+1. Run: `python3 -m app.main run`
+2. The agent parses the JD into a role knowledge base, inspects all 3 candidate resume PDFs (Shaunak, AI/ML Engineer, DevOps Engineer), picks the best match, and evaluates its ORIGINAL text as the true baseline (ATS %, relevance %, factuality %, format %).
+3. The loop's first decision sees acceptance already met -> records 0 decisions and accepts as-is: `final_status = accepted`, `factuality_score = 100`, `ats_match_percent = 88.89`, `format_score = 100`.
+4. Show the sandbox `storage/runs/<run_id>/`: `state.json` (full audit trail), `revision_log.json` (0 decisions), `evaluations.json` (baseline -> re-evaluate), `evidence_report.json` (every required skill classified supported/unsupported/unknown), `final_report.txt`, `original_resume.pdf`, and `tailored_resume_final.pdf`.
+5. `pdftotext tailored_resume_final.pdf - | head`: the candidate's name renders first, one page — the LaTeX template's negative top-margin pull-up is neutralized in the renderer. Scores come from THIS exact artifact's extracted text, not a model.
 
 DEMO PART 2 - A JD that forces adaptation (surface / reject / verify):
-1. Run: python3 -m app.main run --jd data/sample_jd.txt
-2. This full-stack JD lists skills the resume supports (Python, TypeScript, ...) and skills it does NOT support (Kafka, Kubernetes, Redis).
-3. DECISION - iteration 1: 'Surface required skills into existing project bullets'. ACTION: the agent modifies a COPY of the resume, surfacing authentic subtitle evidence into the WorkflowOS project bullet ("Python", "TypeScript"). INTERMEDIATE RESULT: bullet diffs and before/after recorded; evaluation re-run.
-4. ADAPTATION - iterations 2-3: the agent PROPOSES adding 'Kafka' then 'Kubernetes'. Each is REJECTED because the candidate's original resume provides no authentic evidence for it; the skill joins the unsatisfiable set and is never re-proposed.
-5. RE-EVALUATION + FINAL VERIFICATION: the final PDF is rendered via pdflatex, verified to be a valid artifact with all required sections, and the final scores are recorded (factuality 100%, format 100%).
-6. FINAL OUTCOME: max_iterations_reached with a clean 4-decision audit trail (2 accepted surface actions, 2 rejected probes, each with evidence and before/after text).
-7. Show the final reproducible run output and highlight that factuality never drops below 100% because unsupported skills are refused.
+1. Run: `python3 -m app.main run --jd data/sample_jd.txt`
+2. This full-stack JD lists skills the resume supports (Python, TypeScript) and skills it does NOT support (Kafka, Kubernetes).
+3. DECISION / ACTION / INTERMEDIATE RESULT - iteration 1: the agent modifies a COPY of the resume, surfacing authentic subtitle evidence into the WorkflowOS project bullet. The actual bullet text changes (recorded before/after), a real intermediate PDF is rendered, and its text is re-extracted and re-evaluated.
+4. ADAPTATION - iterations 2-3: the agent PROPOSES adding 'Kafka' then 'Kubernetes'. Each is REJECTED because the candidate's original resume provides no authentic evidence; the skill joins the unsatisfiable set and is never re-proposed.
+5. RE-EVALUATION + FINAL VERIFICATION: the final PDF is rendered via pdflatex, verified as a valid artifact with all required sections (Projects / Skills / Education), and re-evaluated from its own extracted text.
+6. FINAL OUTCOME: `max_iterations_reached` with a 4-decision audit trail (2 accepted surface actions, 2 rejected probes), `factuality_score = 100`.
+7. Proof the change is real: `pdftotext tailored_resume_final.pdf - | grep "project tech"` shows `(project tech: Python) (project tech: TypeScript)` IN the actual PDF; the original PDF has none.
+8. `revision_log.json` equals the `decisions` list in `state.json` — the story the logs tell is exactly what the agent did.
+
+DEMO PART 2b - (optional, honest edge case, mirror mode): with an unsubstantiated claim present in a bullet, `remove_unsupported_claim` edits it OUT of the real bullet and skills-line text, re-renders, re-evaluates, and commits the factuality improvement (or rolls it back if it regressed). Covered by `tests/test_tailor_remove.py`.
 
 WHY IT IS AGENTIC, NOT HARD-CODED:
-- Autonomous goal pursuit: the loop chooses accept / surface / probe from the live evaluation.
-- Tool interaction: pdftotext, LaTeX rendering, PDF verification, JSON state persistence.
-- Decision making: each decision picks a target and records evidence, before/after diffs, and evaluation deltas.
-- Adaptation: rollback on regression; unsatisfiable skills are tracked so ideas are never retried pointlessly.
-- Verification: real PDF artifact checks (exists, required sections, size) and per-iteration re-evaluation.
+- Autonomous goal pursuit: the loop chooses accept / surface / probe / remove from the live evaluation of the real artifact.
+- Tool interaction: pdftotext, pdflatex rendering, PDF verification, JSON state persistence.
+- Decision making: each decision picks a target and records evidence, before/after diffs, and evaluation deltas (evaluation_before / evaluation_after).
+- Adaptation: rollbacks on regression delete the intermediate PDF and restore the prior artifact+state (asserted by test_agentic_pipeline_rolls_back_worse_revision); unsatisfiable skills are tracked so ideas are never retried pointlessly.
+- Verification: real PDF artifact checks (exists, required sections, size) and per-iteration re-evaluation of extracted text.
 
 HONESTY GUARANTEES DEMONSTRATED:
-- Skills fabricated into bullets are never allowed: probing Kafka/Kubernetes fails loudly with the reason recorded.
-- The default role profile correctly accepts the original resume with 0 decisions - the system refuses to make changes just to look busy.
-- Unsupported claims count is always 0 in the final evaluation.
+- Fabricated skills are never allowed: probing Kafka/Kubernetes fails loudly with the reason recorded and factuality stays at 100%.
+- The default role profile correctly accepts the original resume with 0 decisions — the system refuses to make changes just to look busy.
+- Unsupported claims are always 0 in the final evaluation; claims without evidence would be removed, never invented.
+- Evidence per required skill is classified supported / unsupported / unknown, so out-of-registry tech (e.g. Flink) is reported as 'unknown' rather than falsely accused.
+
+JUDGE-FACING DASHBOARD (30 seconds, on screen):
+- `streamlit run dashboard.py` -> 12-step pipeline stage flow (parse JD -> select -> baseline -> iterate -> verify), candidate comparison table with scores, per-required-skill evidence badges, evaluation history, full decision trail with before/after metrics and rollback warnings, artifact download buttons, and a raw state.json viewer.

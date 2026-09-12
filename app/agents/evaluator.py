@@ -197,7 +197,9 @@ class EvaluationAgent:
         else:
             formatting_issues.append("No PDF artifact available to validate layout")
 
-        per_skill = required_evidence_summary(evidence_map, sorted(required))
+        per_skill = required_evidence_summary(
+    evidence_map, sorted(required), output_skills=resume_skills
+)
 
         recommendations = [
             f"Surface '{skill}' into a project bullet (supported by a project "

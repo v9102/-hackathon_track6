@@ -29,13 +29,13 @@ from typing import Any
 from app.agents.evaluator import EvaluationAgent
 from app.agents.revisor import RevisionAgent
 from app.agents.selector import ResumeSelector, load_candidate_resumes
-from app.agents.tailor import tailor_surface
+from app.agents.tailor import tailor_remove_skills, tailor_surface
 from app.core.config import settings
 from app.core.state import DecisionRecord, RunState
 from app.tools.evidence import build_evidence_map, evidence_for_skill
 from app.tools.jdp_parser import build_role_kb
 from app.tools.latex_renderer import check_pdf_artifact, render_pdf
-from app.tools.skills import normalize_skill
+from app.tools.skills import extract_canonical_skills, normalize_skill
 
 _DEFAULT_JD = """Full Stack Software Engineer
 
@@ -192,6 +192,108 @@ class AgenticPlanner:
         return {}
 
     # ------------------------------------------------------------------ #
+    def _apply_revision(
+        self,
+        state: RunState,
+        iteration: int,
+        decision: dict[str, Any],
+        current: Any,
+        current_pdf: Path | None,
+        candidate: Any,
+        actions: list[dict[str, str]],
+        run_dir: Path,
+        template_path: Path | None,
+    ) -> tuple[Any, Path | None, str | None]:
+        """Render + re-evaluate a candidate revision, committing or rolling back.
+
+        Returns ``(resume, pdf, stop_status)`` where ``stop_status`` is ``None``
+        on a normal commit/rollback (the loop should continue) or
+        ``render_failed`` when the intermediate PDF could not be compiled (the
+        loop must stop).
+        """
+        eval_before = self._evaluate_artifact(state, current, current_pdf)
+
+        candidate_pdf = run_dir / f"tailored_resume_v{iteration}.pdf"
+        try:
+            render_pdf(candidate, candidate_pdf, template_path)
+        except Exception as e:  # noqa: BLE001
+            first = actions[0]
+            self._record_decision(
+                state, iteration, decision,
+                accepted=False,
+                before=first.get("before", ""),
+                after=first.get("after", ""),
+                evidence=first.get("evidence", ""),
+                eval_before=_metrics(eval_before),
+                eval_after={},
+                rollback_reason=f"PDF render failed: {e}",
+                decision_title=first.get("decision"),
+                decision_reason=first.get("reason"),
+                target_value=first.get("target"),
+            )
+            return current, current_pdf, "render_failed"
+
+        from app.tools.jdp_parser import extract_text_from_pdf
+
+        try:
+            artifact_text = extract_text_from_pdf(candidate_pdf)
+        except (OSError, ValueError, Exception):  # noqa: BLE001
+            artifact_text = candidate.full_text()
+
+        eval_after = self._evaluate_artifact(
+            state, candidate, candidate_pdf, artifact_text
+        )
+
+        # Adaptation: roll back a revision that made things worse.
+        if _worse(_metrics(eval_before), _metrics(eval_after)):
+            candidate_pdf.unlink(missing_ok=True)
+            for action_entry in actions:
+                self._record_decision(
+                    state, iteration, decision,
+                    accepted=False,
+                    before=action_entry["before"],
+                    after=action_entry["after"],
+                    evidence=action_entry["evidence"],
+                    eval_before=_metrics(eval_before),
+                    eval_after=_metrics(eval_after),
+                    rollback_reason=(
+                        "Revision regressed evaluation scores; rolled back."
+                    ),
+                    decision_title=action_entry.get("decision"),
+                    decision_reason=action_entry.get("reason"),
+                    target_value=action_entry.get("target"),
+                )
+            state.current_evaluation = eval_before
+            state.evaluation_history.append(
+                {"iteration": iteration, "stage": "rolled-back", **eval_before}
+            )
+            state.persist()
+            return current, current_pdf, None
+
+        # Commit the successful revision.
+        state.structured_resume = copy.deepcopy(candidate)
+        state.current_artifact = str(candidate_pdf)
+        state.current_evaluation = eval_after
+        state.evaluation_history.append(
+            {"iteration": iteration, "stage": "committed", **eval_after}
+        )
+        for action_entry in actions:
+            self._record_decision(
+                state, iteration, decision,
+                accepted=True,
+                before=action_entry["before"],
+                after=action_entry["after"],
+                evidence=action_entry["evidence"],
+                eval_before=_metrics(eval_before),
+                eval_after=_metrics(eval_after),
+                decision_title=action_entry.get("decision"),
+                decision_reason=action_entry.get("reason"),
+                target_value=action_entry.get("target"),
+            )
+        state.persist()
+        return candidate, candidate_pdf, None
+
+    # ------------------------------------------------------------------ #
     def _run_loop(self, state: RunState, template_path: Path | None) -> None:
         run_dir = Path(state.run_dir)
         evidence_map = self._evidence_objects(state)
@@ -309,102 +411,60 @@ class AgenticPlanner:
                     state.persist()
                     return
 
-                action = actions[0]
-                before_text = action["before"]
-                after_text = action["after"]
-                evidence_note = action["evidence"]
+                current_resume, current_pdf, stop_status = self._apply_revision(
+                    state, iteration, decision, current_resume, current_pdf,
+                    modified, actions, run_dir, template_path,
+                )
+                if stop_status is not None:
+                    state.final_status = stop_status
+                    state.persist()
+                    return
+                continue
 
-                # Render the intermediate result as a real PDF artifact.
-                candidate_pdf = run_dir / f"tailored_resume_v{iteration}.pdf"
-                try:
-                    render_pdf(modified, candidate_pdf, template_path)
-                except (OSError, RuntimeError, Exception) as e:  # noqa: BLE001
-                    first = actions[0]
+            if decision["action"] == "remove_unsupported_claim":
+                # Truthful fix for unsubstantiated claims: edit them OUT of the
+                # actual bullet/skills text, render, re-evaluate, and commit the
+                # improvement (or roll it back if it regressed).
+                unsupported_skills = sorted(
+                    extract_canonical_skills(
+                        " ".join(
+                            c.get("claim", "")
+                            for c in eval_before.get("unsupported_claims", [])
+                        )
+                    )
+                )
+                candidate_resume = copy.deepcopy(current_resume)
+                modified, actions = tailor_remove_skills(
+                    candidate_resume, set(unsupported_skills)
+                )
+                if not actions:
                     self._record_decision(
                         state, iteration, decision,
                         accepted=False,
-                        before=before_text,
-                        after=after_text,
-                        evidence=evidence_note,
+                        before="",
+                        after="",
+                        evidence=f"Unsupported skills: {', '.join(unsupported_skills)}",
                         eval_before=_metrics(eval_before),
                         eval_after={},
-                        rollback_reason=f"PDF render failed: {e}",
-                        decision_title=first.get("decision"),
-                        decision_reason=first.get("reason"),
-                        target_value=first.get("target"),
+                        rollback_reason=(
+                            "Unsupported skills could not be located in the "
+                            "tailored output to remove."
+                        ),
                     )
-                    state.final_status = "render_failed"
+                    state.final_status = "best_effort"
                     state.current_evaluation = eval_before
                     state.persist()
                     return
 
-                # Re-evaluate the ACTUAL rendered artifact (extract its text).
-                from app.tools.jdp_parser import extract_text_from_pdf
-
-                try:
-                    artifact_text = extract_text_from_pdf(candidate_pdf)
-                except (OSError, ValueError, Exception):  # noqa: BLE001
-                    artifact_text = modified.full_text()
-
-                eval_after = self._evaluate_artifact(
-                    state, modified, candidate_pdf, artifact_text
+                current_resume, current_pdf, stop_status = self._apply_revision(
+                    state, iteration, decision, current_resume, current_pdf,
+                    modified, actions, run_dir, template_path,
                 )
-
-                # Adaptation: roll back a revision that made things worse.
-                if _worse(_metrics(eval_before), _metrics(eval_after)):
-                    candidate_pdf.unlink(missing_ok=True)
-                    for action_entry in actions:
-                        self._record_decision(
-                            state, iteration, decision,
-                            accepted=False,
-                            before=action_entry["before"],
-                            after=action_entry["after"],
-                            evidence=action_entry["evidence"],
-                            eval_before=_metrics(eval_before),
-                            eval_after=_metrics(eval_after),
-                            rollback_reason=(
-                                "Revision regressed evaluation scores; rolled back."
-                            ),
-                            decision_title=action_entry.get("decision"),
-                            decision_reason=action_entry.get("reason"),
-                            target_value=action_entry.get("target"),
-                        )
-                    state.current_evaluation = eval_before
-                    state.evaluation_history.append(
-                        {"iteration": iteration, "stage": "rolled-back", **eval_before}
-                    )
+                if stop_status is not None:
+                    state.final_status = stop_status
                     state.persist()
-                    continue
-
-                # Commit the successful revision.
-                current_resume = modified
-                current_pdf = candidate_pdf
-                state.structured_resume = copy.deepcopy(current_resume)
-                state.current_artifact = str(current_pdf)
-                state.current_evaluation = eval_after
-                state.evaluation_history.append(
-                    {"iteration": iteration, "stage": "committed", **eval_after}
-                )
-                for action_entry in actions:
-                    self._record_decision(
-                        state, iteration, decision,
-                        accepted=True,
-                        before=action_entry["before"],
-                        after=action_entry["after"],
-                        evidence=action_entry["evidence"],
-                        eval_before=_metrics(eval_before),
-                        eval_after=_metrics(eval_after),
-                        decision_title=action_entry.get("decision"),
-                        decision_reason=action_entry.get("reason"),
-                        target_value=action_entry.get("target"),
-                    )
+                    return
                 continue
-
-            if decision["action"] == "remove_unsupported_claim":
-                state.final_status = "best_effort"
-                state.current_evaluation = eval_before
-                state.persist()
-                return
 
             state.final_status = "best_effort"
             state.persist()
@@ -598,6 +658,7 @@ class AgenticPlanner:
                     "required": True,
                     "matched": skill in state.current_evaluation.get("matched_skills", []),
                     "supported": False,
+                    "classification": "unknown",
                     "strength": "missing",
                     "sources": [],
                 }

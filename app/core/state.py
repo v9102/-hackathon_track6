@@ -27,6 +27,7 @@ class ResumeCandidate:
     skills: set[str] = field(default_factory=set)
     selection_score: float = 0.0
     evidence_count: int = 0
+    matched_required: list[str] = field(default_factory=list)
     reasoning: str = ""
 
 
@@ -88,18 +89,6 @@ class RunState:
     run_dir: str = ""
 
     # ------------------------------------------------------------------ #
-    def iteration_metrics(self) -> dict[str, float]:
-        """Latest aggregate metrics (0.0 when none yet)."""
-        if not self.current_evaluation:
-            return {"ats": 0.0, "relevance": 0.0, "factuality": 0.0, "format": 0.0}
-        return {
-            "ats": float(self.current_evaluation.get("ats_score", 0)),
-            "relevance": float(self.current_evaluation.get("relevance_score", 0)),
-            "factuality": float(self.current_evaluation.get("factuality_score", 0)),
-            "format": float(self.current_evaluation.get("format_score", 0)),
-        }
-
-    # ------------------------------------------------------------------ #
     def set_run_dir(self) -> None:
         """Create the run directory and persist the state snapshot."""
         if not self.run_id:
@@ -134,6 +123,7 @@ class RunState:
                     "selection_score": c.selection_score,
                     "evidence_count": c.evidence_count,
                     "skills": sorted(c.skills),
+                    "matched_required": c.matched_required,
                     "reasoning": c.reasoning,
                 }
                 for c in self.candidates
@@ -190,6 +180,7 @@ class RunState:
                 skills=set(c.get("skills", [])),
                 selection_score=float(c.get("selection_score", 0)),
                 evidence_count=int(c.get("evidence_count", 0)),
+                matched_required=[str(x) for x in c.get("matched_required", [])],
                 reasoning=str(c.get("reasoning", "")),
             )
             for c in payload.get("candidates", [])

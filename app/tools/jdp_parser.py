@@ -14,7 +14,6 @@ This tool is designed to be deterministic, reproducible, and testable.
 
 from __future__ import annotations
 
-import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -24,8 +23,6 @@ from app.tools.skills import (
     extract_canonical_skills,
     normalize_skill,
 )
-
-logger = logging.getLogger(__name__)
 
 
 def extract_skills_from_text(text: str) -> set[str]:
@@ -239,69 +236,3 @@ def build_role_kb(
     return role_kb
 
 
-def render_tailored_pdf(tailored_text: str, template_path: Path, output_path: Path) -> Path:
-    """Render tailored resume as PDF using LaTeX template.
-    
-    Args:
-        tailored_text: The tailored resume content
-        template_path: Path to the LaTeX template file
-        output_path: Path where PDF should be saved
-        
-    Returns:
-        Path to the generated PDF
-    """
-    import subprocess
-    
-    # Read the template
-    with open(template_path, 'r', encoding='utf-8') as f:
-        template = f.read()
-    
-    # Replace placeholders with tailored content
-    # Find and replace the tailored bullets section
-    # For now, just append a Tailoring Modifications section
-    tailoring_section = r"""\section{Tailoring Modifications}
-
-\begin{itemize}[leftmargin=*]
-\item Resume tailored to emphasize required skills from job description\end{itemize}"""
-    
-    # Insert the tailoring section before \end{document}
-    if r"\end{document}" in template:
-        template = template.replace(r"\end{document}", tailoring_section + r"\end{document}")
-    
-    # Write the modified template to a temporary file
-    temp_template = output_path.parent / "temp_template.tex"
-    with open(temp_template, 'w', encoding='utf-8') as f:
-        f.write(template)
-    
-    # Compile LaTeX to PDF
-    try:
-        subprocess.run(
-            ["pdflatex", "-interaction=nonstopmode", "-output-directory=", 
-             str(output_path.parent), str(temp_template)],
-            capture_output=True,
-            text=True,
-            timeout=30000,
-            check=False,
-        )
-        pdf_path = output_path.parent / (output_path.stem + ".pdf")
-        
-        # Clean up temporary files
-        for ext in [".aux", ".log", ".toc"]:
-            temp_file = Path(str(temp_template).replace(".tex", ext))
-            if temp_file.exists():
-                temp_file.unlink()
-        
-        # Clean up any generated PDF in the output directory
-        if pdf_path.exists():
-            # Remove the old PDF if it exists
-            old_pdf = Path(str(output_path))
-            if old_pdf.exists():
-                old_pdf.unlink()
-        
-        return pdf_path
-    except (OSError, ValueError, TypeError, RuntimeError, AttributeError) as e:
-        print(f"LaTeX compilation error: {e}")
-        # Fallback: create a simple text file
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(tailored_text)
-        return output_path

@@ -9,13 +9,17 @@ before/after text and the supporting evidence.
 from __future__ import annotations
 
 import copy
+import re
 from pathlib import Path
 from typing import Any
 
 from app.agents.revisor import RevisionAgent
 from app.core.models import StructuredResume
 from app.tools.jdp_parser import extract_skills_from_text, extract_text_from_pdf
-from app.tools.skills import extract_canonical_skills
+from app.tools.skills import (
+    CANONICAL_ALIASES,
+    extract_canonical_skills,
+)
 
 
 def _contains_skill(text: str, skill: str) -> bool:
@@ -26,6 +30,107 @@ def _rewrite_bullet_with_skill(bullet_text: str, skill: str) -> str:
     """Reword a bullet to surface a supported skill truthfully."""
     text = bullet_text.strip().rstrip(".")
     return f"{text} (project tech: {skill})."
+
+
+def _strip_skill_from_text(text: str, skill: str) -> str:
+    """Remove every alias of ``skill`` from ``text`` (whole-token only)."""
+    aliases = CANONICAL_ALIASES.get(skill, [skill])
+    cleaned = text
+    for alias in sorted(aliases, key=len, reverse=True):
+        cleaned = re.sub(
+            rf"(?<![A-Za-z0-9]){re.escape(alias)}(?![A-Za-z0-9])",
+            " ",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+    # Tidy the damage the removal leaves behind (spaces, double commas).
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s+([,.;:])", r"\1", cleaned)
+    cleaned = re.sub(r"([,.]){2,}", r"\1", cleaned)
+    cleaned = re.sub(r"\s*[)(]\s*", " ", cleaned)
+    cleaned = re.sub(r"\s*\(\s*\)", " ", cleaned)
+    return cleaned.strip()
+
+
+def tailor_remove_skills(
+    resume: StructuredResume,
+    skills: set[str],
+) -> tuple[StructuredResume, list[dict[str, str]]]:
+    """Remove unsupported-skill claims from project/experience bullets.
+
+    This is the truthful alternative to fabricating: when a skill appears in a
+    bullet but the candidate's original evidence cannot substantiate it, the
+    agent edits it out of the actual bullet text and records the before/after.
+    """
+    sr: StructuredResume = copy.deepcopy(resume)
+    actions: list[dict[str, str]] = []
+    for section in sr.all_sections():
+        for entry in section:
+            for bullet in entry.bullets:
+                before = bullet.current
+                after_text = before
+                removed_here: list[str] = []
+                for skill in sorted(skills):
+                    candidate_after = _strip_skill_from_text(after_text, skill)
+                    if candidate_after != after_text:
+                        remaining = extract_canonical_skills(candidate_after)
+                        if skill not in remaining:
+                            after_text = candidate_after
+                            removed_here.append(skill)
+                if removed_here and after_text != before:
+                    bullet.current = after_text.rstrip(".") + "."
+                    actions.append(
+                        {
+                            "decision": "Remove unsupported claim(s)",
+                            "reason": (
+                                f"Skills {', '.join(sorted(removed_here))} appear in a "
+                                "bullet but the candidate's original resume provides no "
+                                "authentic evidence for them."
+                            ),
+                            "action": "remove_unsupported_claim",
+                            "target": ", ".join(sorted(removed_here)),
+                            "before": before,
+                            "after": bullet.current,
+                            "evidence": "none (unsupported claim refused)",
+                        }
+                    )
+
+    # Strip the unsupported skills from the skills lines too, so the finished
+    # artifact no longer asserts them anywhere (keep the line only if others
+    # remain).
+    cleaned_lines: list[str] = []
+    for line in sr.skills_lines:
+        line_cleaned = line
+        removed_from_line: list[str] = []
+        for skill in sorted(skills):
+            after_line = _strip_skill_from_text(line_cleaned, skill)
+            if after_line != line_cleaned:
+                remaining = extract_canonical_skills(after_line)
+                if skill not in remaining:
+                    line_cleaned = after_line
+                    removed_from_line.append(skill)
+        if not line_cleaned:
+            continue
+        if removed_from_line:
+            cleaned_lines.append(line_cleaned)
+            actions.append(
+                {
+                    "decision": "Remove unsupported claim(s)",
+                    "reason": (
+                        f"Skill(s) {', '.join(sorted(removed_from_line))} listed in "
+                        "the skills line but unsupported by the candidate's evidence."
+                    ),
+                    "action": "remove_unsupported_claim",
+                    "target": ", ".join(sorted(removed_from_line)),
+                    "before": line,
+                    "after": line_cleaned,
+                    "evidence": "none (unsupported claim refused)",
+                }
+            )
+        else:
+            cleaned_lines.append(line)
+    sr.skills_lines = cleaned_lines
+    return sr, actions
 
 
 def tailor_surface(

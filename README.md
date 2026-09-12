@@ -16,6 +16,9 @@ pip install -r requirements.txt
 
 # Or install as package
 pip install -e .
+
+# Install runtime + dev dependencies (pytest, pytest-mock, ruff, mypy)
+pip install -r requirements.txt -r requirements-dev.txt
 ```
 
 ## 🚀 Full Agentic Pipeline (Task 6)
@@ -43,16 +46,32 @@ Each run produces a traceable artifact set under `storage/runs/<run_id>/`:
 |------|-------------|
 | `state.json` | Full run state: decisions, before/after diffs, evaluation history |
 | `final_report.txt` | Human-readable outcome summary |
-| `tailored_resume_final.pdf` | Final, evaluated, verified deliverable PDF |
+| `final_report.json` | Machine-readable version of the outcome |
+| `revision_log.json` | Exactly the recorded decision list (what actually happened) |
+| `evaluations.json` | Evaluation history (baseline → committed → rolled-back → final) |
+| `evidence_report.json` | Per-required-skill evidence: `supported` / `unsupported` / `unknown` |
+| `original_resume.pdf` | The untouched baseline artifact, copied into the sandbox |
+| `tailored_resume_final.pdf` | Final, evaluated, verified deliverable PDF (rendered via `pdflatex`) |
+| `tailored_resume_final.tex` | The exact LaTeX source that produced the final PDF |
+
+The final PDF's rendered text is re-extracted and re-evaluated, so every score
+reflects the actual artifact on disk — not a modeled approximation.
 
 ### What the agent does (honestly)
 
 1. **Goal** - Reads the JD and builds a role knowledge base of required/preferred skills.
-2. **Decision** - Evaluates the original resume (ATS %, relevance %, factuality %, format %) and picks an action: *accept as-is*, *surface* authentic but buried skills, or *probe* a skill the resume never mentions.
-3. **Action** - Modifies only a **copy** of the resume; every modification is linked to real evidence (e.g. a project subtitle listing `Python, TypeScript`).
-4. **Intermediate Result + Adaptation** - Re-evaluates the revised resume. Rejected probes (skills with **no** authentic evidence, e.g. `Kafka`/`Kubernetes`) are marked unsatisfiable and never re-proposed.
-5. **Re-Evaluation + Final Verification** - Re-renders the final PDF from the LaTeX template, verifies it is a valid PDF with all required sections, and records the final score.
+2. **Decision** - Evaluates the original resume (ATS %, relevance %, factuality %, format %) and picks an action: *accept as-is*, *surface* authentic but buried skills, *probe* a skill the resume never mentions, or *remove* an unsubstantiated claim.
+3. **Action** - Modifies only a **copy** of the resume; every modification is linked to real evidence (e.g. a project subtitle listing `Python, TypeScript`). If a claim has **no** authentic evidence it is edited *out* of the actual bullet/skills text — never invented.
+4. **Intermediate Result + Adaptation** - Re-renders a real intermediate PDF, re-evaluates its extracted text, and rolls back any revision that regresses a metric (deleting the intermediate PDF). Rejected probes (skills with **no** authentic evidence, e.g. `Kafka`/`Kubernetes`) are marked unsatisfiable and never re-proposed.
+5. **Re-Evaluation + Final Verification** - Re-renders the final PDF from the LaTeX template, verifies it is a valid PDF with all required sections (Projects / Skills / Education), and records the final score.
 6. **Outcome** - `accepted`, `best_effort`, `max_iterations_reached`, or `render_failed`, each with a full audit trail.
+
+Evidence for every required skill is classified as **supported** (found in the
+candidate's authentic content), **unsupported** (claimed by the target JD but
+absent from the candidate), or **unknown** (not in the skills registry — left
+alone rather than falsely accused). The final report carries that
+classification per required skill, and `factuality_score` reflects real
+documented claims only.
 
 Example run against `data/sample_jd.txt`:
 
@@ -66,7 +85,7 @@ Decisions          : 4 (2 accepted, 2 rejected/rolled-back)
            -> 'Kubernetes' cannot be added: the candidate's original resume provides no authentic evidence for it.
 ```
 
-With the default role profile the agent correctly reports `accepted` (0 decisions): the original resume already meets acceptance and no fabrication is warranted.
+With the default role profile the agent correctly reports `accepted` (0 decisions): the original resume already meets acceptance and no fabrication is warranted. The final artifact is verified by re-extracting its rendered text — `ats_match_percent` 88.89, `relevance_percent` 88.89, `factuality_score` 100, `format_score` 100.
 
 ## 🏗️ Project Structure
 
@@ -86,10 +105,11 @@ hackathon_track6/
 │   ├── core/                 # config, models, run state
 │   └── tools/                # resume parser, JD parser, LaTeX renderer, skills, evidence
 ├── ShaunakMishra_Resume.tex  # LaTeX template (provided format)
-├── data/sample_jd.txt        # Demo JD that forces the adaptive loop
-├── Resumes/                  # Candidate resume PDFs
-├── storage/runs/             # Per-run artifacts (state.json, final report, final PDF)
-├── tests/                    # Test suite (63 tests)
+├── data/default_jd.txt       # Accept-as-is JD (demo path 1)
+│   └── sample_jd.txt         # Adaptive JD (demo path 2)
+├── Resumes/                  # Candidate resume PDFs (3 candidates)
+├── storage/runs/             # Per-run artifact sandbox (state.json, reports, PDFs)
+├── tests/                    # Test suite (86 tests, incl. real pdflatex chain)
 ├── jdp_parser.py             # Root convenience wrapper (JD parsing)
 ├── resume_tailor.py          # Root convenience wrapper (tailoring)
 ├── evaluate_resume.py        # Root convenience wrapper (evaluation)
@@ -126,32 +146,37 @@ resume_parser.py → structured_resume  (pdftotext + rule-based parse)
    ↓
 planner loop:
    revisor.decide_next_action(evaluation, role_kb, evidence_map, unsatisfiable)
-       → action (accept / surface / probe)
-   tailor.tailor_surface / tailor_sustain
+       → action (accept / surface / probe / remove_unsupported_claim)
+   tailor.tailor_surface (evidence-backed) / tailor_remove_skills (truthful removal)
        → modified resume + evidence-linked action records
-   latex_renderer.render_pdf → candidate.pdf
-   evaluator.evaluate_agentic → re-evaluation (formats via artifact)
-   adaptation: rejected probes join `unsatisfiable`, never re-proposed
+   latex_renderer.render_pdf → candidate PDF (rendered + text re-extracted)
+   evaluator.evaluate_agentic → re-evaluation of the real rendered artifact
+   adaptation: rejected probes join `unsatisfiable`; regressing revisions are
+              rolled back (intermediate PDF deleted) and re-decided
    ↓
 verification → storage/runs/<run_id>/tailored_resume_final.pdf + final_report.txt
 ```
 
 ## ✅ Compliance Highlights
 
-- **Agentic, not hard-coded**: Deterministic but fully autonomous loop with real intermediate results, adaptation, and final verification; each decision is logged with before/after diffs and the evidence that justifies it.
-- **No content fabrication**: The planner **refuses** any action without authentic evidence (`evidence_for_skill(...).supported`), and probe-only decisions are recorded as rejected.
-- **Re-evaluation after every revision**: a revision that regresses any score is automatically rolled back.
-- **Final PDF verification**: `check_pdf_artifact` confirms the final PDF exists, has all required sections, and is reasonably sized.
-- **LaTeX template compliance**: Uses the provided `ShaunakMishra_Resume.tex` format via `pdflatex`; renders without `fullpage`/TS1 fontset (uses `geometry` + math bullet labels).
-- **Professional CI**: GitHub Actions runs `ruff check .`, `mypy` on the root wrappers, and the 63 pytest tests (3 end-to-end agentic pipeline tests included), plus a real `pdflatex` pipeline smoke run.
+- **Agentic, not hard-coded**: Deterministic but fully autonomous loop with real intermediate results, adaptation, and final verification; each decision is logged with before/after diffs, the evidence that justifies it, and `evaluation_before`/`evaluation_after` metrics.
+- **No content fabrication**: The planner **refuses** any action without authentic evidence (`evidence_for_skill(...).supported`), and probe-only decisions are recorded as rejected. Every required skill gets a `supported` / `unsupported` / `unknown` classification in the evidence report.
+- **Truthful removal**: an unsubstantiated claim is edited *out* of the actual bullet and skills-line text and the improved artifact is re-rendered and re-evaluated (`remove_unsupported_claim`).
+- **Re-evaluation after every revision**: each candidate is rendered to a **real intermediate PDF**, its text is re-extracted, and any revision that regresses a score is automatically rolled back (intermediate PDF deleted, structured resume untouched).
+- **Final PDF verification**: `check_pdf_artifact` confirms the final PDF exists, has all required sections, and is reasonably sized; `pdflatex` must be installed or the run fails with a clear message instead of producing a fake artifact.
+- **LaTeX template compliance**: Uses the provided `ShaunakMishra_Resume.tex` format via `pdflatex` (macro-compatible `geometry` + math bullet labels); the top-margin pull-up that clips the candidate's name is neutralized so the name always renders.
+- **Professional CI**: GitHub Actions installs `poppler-utils`, then runs `ruff check .`, `mypy` on the root wrappers, and the pytest suite (86 tests — including 3 end-to-end agentic-pipeline tests and 2 real `pdflatex` chain tests); the smoke job additionally installs TeX Live and runs the real pipeline against both JDs.
 
 ## 📊 Output Files Summary
 
 | File | Description | Format |
 |------|-------------|--------|
 | `storage/runs/<run_id>/state.json` | Full decision/adaptation audit trail | JSON |
+| `storage/runs/<run_id>/revision_log.json` | Decision records exactly as recorded | JSON |
+| `storage/runs/<run_id>/evaluations.json` | Baseline → committed → rolled-back → final | JSON |
+| `storage/runs/<run_id>/evidence_report.json` | Per-required-skill evidence classification | JSON |
 | `storage/runs/<run_id>/final_report.txt` | Human-readable run summary | TXT |
-| `storage/runs/<run_id>/tailored_resume_final.pdf` | Final evaluated deliverable | PDF |
+| `storage/runs/<run_id>/tailored_resume_final.pdf` | Final evaluated deliverable (real PDF) | PDF |
 | `role_kb.json` | JD parser output (CLI wrapper) | JSON |
 | `tailored_resume.pdf` | Tailored resume (CLI wrapper) | LaTeX PDF |
 | `evidence_report.json` | Machine-readable change/evidence report | JSON |
@@ -171,7 +196,7 @@ pytest tests/ -v
 ruff check .
 mypy main.py dashboard.py jdp_parser.py resume_tailor.py evaluate_resume.py revisor.py change_report.py
 
-# Start dashboard
+# Start dashboard (judge-facing: pipeline stages, candidate compare, decision trail)
 streamlit run dashboard.py
 ```
 

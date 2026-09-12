@@ -104,6 +104,7 @@ class ResumeSelector:
                     skills=skills,
                     selection_score=score,
                     evidence_count=_evidence_depth(resume, canonicalize_list(role_kb.get("required_skills", []))),
+                    matched_required=breakdown.get("matched_required", []),
                     reasoning=self.reasoning_text(resume.name, score, breakdown),
                 )
             )

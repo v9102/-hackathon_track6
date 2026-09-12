@@ -14,8 +14,10 @@ import pytest
 from app.agents.planner import _DEFAULT_JD
 from app.tools.jdp_parser import build_role_kb
 from app.tools.latex_renderer import (
+    _preamble,
     check_pdf_artifact,
     format_score_estimate,
+    render_pdf,
     tex_escape,
 )
 
@@ -35,6 +37,70 @@ class TestTeXEscape:
     def test_maps_math_symbols(self) -> None:
         assert tex_escape("\u2192ok") == "$\\rightarrow$ok"
         assert tex_escape("x\u2265y") == "x$\\geq$y"
+
+
+class TestPreambleTopMargin:
+    def test_file_preamble_neutralizes_negative_topmargin(self) -> None:
+        template = Path(__file__).resolve().parent.parent / "ShaunakMishra_Resume.tex"
+        preamble = _preamble(template)
+        assert "\\topmargin}{0pt}" in preamble
+        assert "-0.7in" not in preamble
+
+    def test_fallback_preamble_neutralizes_negative_topmargin(self, tmp_path: Path) -> None:
+        missing = tmp_path / "does_not_exist.tex"
+        preamble = _preamble(missing)
+        assert "\\topmargin}{0pt}" in preamble
+        assert "-0.7in" not in preamble
+
+
+class TestPdfRendersNameWithoutClipping:
+    def test_render_without_template_file_still_shows_name(self, tmp_path: Path) -> None:
+        shutil = __import__("shutil")
+        if shutil.which("pdflatex") is None or shutil.which("pdftotext") is None:
+            pytest.skip("pdflatex/pdftotext not installed")
+
+        from app.core.models import Bullet, SectionEntry, StructuredResume
+        from app.tools.jdp_parser import extract_text_from_pdf
+
+        resume = StructuredResume(
+            name="Zed Testerson",
+            headline="Full-Stack Engineer",
+            contact=["z@example.com"],
+            summary="A summary line used for evaluation text length.",
+            skills_lines=["Python, Go"],
+            education=["B.S. Computer Science"],
+            projects=[
+                SectionEntry(
+                    id="p",
+                    title="Project",
+                    subtitle="Go | Python",
+                    meta="2024",
+                    bullets=[
+                        Bullet(id="b0", original="Did the thing.", current="Did the thing.")
+                    ],
+                )
+            ],
+        )
+        pdf = tmp_path / "no_template.pdf"
+        render_pdf(resume, pdf, tmp_path / "missing_template.tex")  # fallback preamble
+        text = extract_text_from_pdf(pdf)
+        assert text.lstrip().startswith("Zed Testerson")
+
+
+class TestPdfLatexMissing:
+    def test_render_fails_clearly_when_pdflatex_is_absent(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from app.core.models import StructuredResume
+        from app.tools.latex_renderer import render_pdf
+
+        monkeypatch.setattr("app.tools.latex_renderer.shutil.which", lambda _cmd: None)
+
+        with pytest.raises(RuntimeError, match="pdflatex is not installed"):
+            render_pdf(
+                StructuredResume(name="Test Name", skills_lines=["Python"]),
+                tmp_path / "out.pdf",
+            )
 
 
 class TestCheckPdfArtifact:

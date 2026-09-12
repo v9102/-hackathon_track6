@@ -41,6 +41,7 @@ CANONICAL_ALIASES: dict[str, list[str]] = {
     "MySQL": ["mysql"],
     "MongoDB": ["mongodb", "mongo"],
     "Redis": ["redis"],
+    "Kafka": ["kafka"],
     "SQL": ["sql"],
     "SQLite": ["sqlite"],
     "Cosmos DB": ["cosmos db", "cosmosdb"],

@@ -8,6 +8,7 @@ the produced PDF (exists, non-empty, readable, expected sections present).
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -61,14 +62,16 @@ def tex_escape(text: str) -> str:
 def _preamble(template_path: Path | None = None) -> str:
     """Extract the preamble from the provided LaTeX template."""
     path = template_path or settings.default_template_path
+    preamble = ""
     if path.exists():
         text = path.read_text(encoding="utf-8")
         marker = "\\begin{document}"
         idx = text.find(marker)
         if idx >= 0:
-            return text[:idx]
-    # Fallback minimal preamble mirroring the provided template format.
-    return """\\documentclass[letterpaper,10.5pt]{article}
+            preamble = text[:idx]
+    if not preamble:
+        # Fallback minimal preamble mirroring the provided template format.
+        preamble = """\\documentclass[letterpaper,10.5pt]{article}
 \\usepackage[margin=0.5in]{geometry}
 \\usepackage{titlesec}
 \\usepackage{enumitem}
@@ -96,6 +99,19 @@ def _preamble(template_path: Path | None = None) -> str:
 \\newcommand{\\resumeItemListStart}{\\begin{itemize}[leftmargin=*, label=$\\circ$, itemsep=0pt, topsep=1pt]}
 \\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-6pt}}
 """
+
+    # The engineered template pulls the first baseline above the page top
+    # (``\addtolength{\topmargin}{-0.7in}``), which clips the candidate's name
+    # on macOS/Linux TeX builds. Neutralize that pull-up so the name (and
+    # section headings) always render visibly. Applies to the file preamble
+    # AND the minimal fallback above.
+    import re as _re
+
+    return _re.sub(
+        r"\\addtolength\{\\topmargin\}\{-?[0-9.]+(?:in|pt|mm|cm|em)\}",
+        lambda _m: r"\addtolength{\topmargin}{0pt}",
+        preamble,
+    )
 
 
 _YEAR_RE = re.compile(r"\b(?:20\d{2}|19\d{2})\b|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}")
@@ -205,9 +221,16 @@ def render_latex(resume: StructuredResume, template_path: Path | None = None) ->
 def compile_tex(tex_path: Path, output_pdf: Path) -> Path:
     """Compile ``tex_path`` into ``output_pdf`` using pdflatex.
 
-    Returns the path to the produced PDF. Raises ``RuntimeError`` when the
-    compile fails or no PDF is produced.
+    Returns the path to the produced PDF. Raises ``RuntimeError`` with a clear
+    message when pdflatex is unavailable or when the compile fails / no PDF is
+    produced.
     """
+    if shutil.which("pdflatex") is None:
+        raise RuntimeError(
+            "pdflatex is not installed on this machine. Install a TeX "
+            "distribution (e.g. 'sudo apt-get install texlive-latex-extra "
+            "texlive-fonts-recommended') to render PDF artifacts."
+        )
     out_dir = output_pdf.parent
     out_dir.mkdir(parents=True, exist_ok=True)
     jobname = output_pdf.stem

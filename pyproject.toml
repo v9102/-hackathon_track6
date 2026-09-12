@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=61.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta:__legacy__"
 
 [project]
 name = "resume-tailoring"
@@ -40,6 +40,21 @@ testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-v --tb=short --ignore=tests/test_basic.py"
 filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.setuptools]
+py-modules = [
+    "jdp_parser",
+    "resume_tailor",
+    "evaluate_resume",
+    "revisor",
+    "change_report",
+    "main",
+    "dashboard",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
 
 [tool.ruff.lint]
 ignore = ["EXE002"]

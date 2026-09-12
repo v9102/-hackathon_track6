@@ -80,10 +80,10 @@ def auto_rephrase_bullet(
 
 def revise_resume(
     evaluation: dict[str, Any],
-    tailoring_report: dict[str, any],
-    all_resumes: dict[str, dict[str, any]],
+    tailoring_report: dict[str, Any],
+    all_resumes: dict[str, dict[str, Any]],
     max_revisions: int = 3,
-) -> dict[str, any]:
+) -> dict[str, Any]:
     """Revise the resume based on evaluation flags."""
     flags = evaluation.get("flags", [])
     revision_log = {
@@ -203,7 +203,7 @@ def render_revised_pdf(
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "Revised Tailored Resume", ln=True, align="C")
+    pdf.cell(0, 10, "Revised Tailored Resume", ln=1, align="C")  # type: ignore[arg-type]
     pdf.ln(5)
     pdf.set_font("Helvetica", "", 11)
 
@@ -215,7 +215,7 @@ def render_revised_pdf(
             new = change.get("new_text", "")
             if old and old in modified_line:
                 modified_line = modified_line.replace(old, new)
-        pdf.cell(0, 5, modified_line, ln=True)
+        pdf.cell(0, 5, modified_line, ln=1)  # type: ignore[arg-type]
 
     pdf.output(str(output_path))
     print(f"Revised resume written to {output_path}")

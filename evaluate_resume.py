@@ -84,7 +84,7 @@ def compute_relevance(resume_skills: set[str], required_skills: set[str]) -> flo
 def check_factuality(
     resume_text: str,
     role_kb: dict[str, Any],
-    all_resumes: dict[str, dict[str, any]],
+    all_resumes: dict[str, dict[str, Any]],
 ) -> list[dict[str, str]]:
     """Check factuality - flag claims not supported in resume text or known profile."""
     flags = []

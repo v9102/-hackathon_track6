@@ -60,7 +60,7 @@ def load_role_kb(kb_path: Path) -> dict[str, Any]:
         return json.load(f)
 
 
-def load_resume_pdf(resume_path: Path) -> dict[str, str]:
+def load_resume_pdf(resume_path: Path) -> dict[str, str | set[str]]:
     """Load a resume and extract its text and skills."""
     text = extract_text_from_pdf(resume_path)
     return {
@@ -79,7 +79,7 @@ def compute_match_score(resume_skills: set[str], required_skills: set[str]) -> f
 
 
 def tailor_latex_resume(
-    resume: dict[str, str],
+    resume: dict[str, str | set[str]],
     role_kb: dict[str, Any],
     template_path: Path,
 ) -> tuple[str, dict[str, Any]]:
@@ -93,8 +93,12 @@ def tailor_latex_resume(
     tools = role_kb.get("tools", [])
     role_title = role_kb.get("title", "Role")
 
-    resume_skills = resume["skills"]
-    full_text = resume["full_text"]
+    resume_skills = resume.get("skills", set())
+    if isinstance(resume_skills, str):
+        resume_skills = extract_skills_from_text(resume_skills)
+    resume_skills = set(resume_skills)
+    full_text_value = resume.get("full_text", "")
+    full_text = full_text_value if isinstance(full_text_value, str) else ""
     match_score = compute_match_score(resume_skills, required_skills)
 
     # Read the template
@@ -119,7 +123,7 @@ def tailor_latex_resume(
     skills_needed = required_skills - skills_present
 
     # Tailoring modifications
-    modifications = {
+    modifications: dict[str, list[Any]] = {
         "kept_bullets": [],
         "removed_bullets": [],
         "rewritten_bullets": [],

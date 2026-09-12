@@ -16,8 +16,8 @@ def load_json(filepath: Path) -> dict[str, Any]:
 
 
 def generate_human_report(
-    tailoring_report: dict[str, any],
-    revision_log: dict[str, any],
+    tailoring_report: dict[str, Any],
+    revision_log: dict[str, Any],
 ) -> str:
     """Generate a human-readable report."""
     # Extract key information from tailoring report
@@ -79,9 +79,9 @@ def generate_human_report(
 
 
 def generate_machine_report(
-    tailoring_report: dict[str, any],
-    revision_log: dict[str, any],
-) -> dict[str, any]:
+    tailoring_report: dict[str, Any],
+    revision_log: dict[str, Any],
+) -> dict[str, Any]:
     """Generate a machine-readable evidence report."""
     evidence = {
         "resume_source": tailoring_report.get("source_resume", ""),

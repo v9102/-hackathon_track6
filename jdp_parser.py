@@ -193,7 +193,7 @@ def parse_responsibilities(jd_text: str) -> list[str]:
 def search_role_kb(role_name: str, api_key: str) -> str:
     """Optional: search Tavily API for role responsibilities."""
     try:
-        import requests
+        import requests  # type: ignore[import-untyped]
         url = "https://api.tavily.com/search"
         payload = {"query": f"{role_name} responsibilities", "api_key": api_key}
         resp = requests.post(url, json=payload, timeout=10)

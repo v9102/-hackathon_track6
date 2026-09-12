@@ -37,3 +37,6 @@ testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-v --tb=short --ignore=tests/test_basic.py"
 filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff.lint]
+ignore = ["EXE002"]

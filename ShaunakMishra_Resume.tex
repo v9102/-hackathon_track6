@@ -1,0 +1,164 @@
+% Resume - Shaunak Mishra
+%-------------------------
+
+\documentclass[letterpaper,10.5pt]{article}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[pdftex]{hyperref}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.375in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-0.7in}
+\addtolength{\textheight}{1.45in}
+
+\raggedbottom
+\raggedright
+
+\titleformat{\section}{\vspace{-8pt}\scshape\large}{}{0em}{}[\titlerule \vspace{-7pt}]
+
+\newcommand{\resumeSubheading}[5]{
+\vspace{-2pt}\item
+\begin{tabular*}{0.97\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}
+\textbf{#1} & \textit{\small #5} \\
+\textit{\small #3} & \textit{\small #4} \\
+\end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=*]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=*, label=$\circ$, itemsep=0pt, topsep=1pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-6pt}}
+
+%-------------------------------------------
+\begin{document}
+
+%----------HEADING-----------------
+\begin{center}
+{\Large \textbf{Shaunak Mishra}}\\[3pt]
+{\small \textbf{Full-Stack Engineer} $|$ React Native, Go, Node.js}\\[3pt]
+\small
+Bhubaneswar, India $|$
+\href{mailto:shaunakmishra374@gmail.com}{shaunakmishra374@gmail.com} $|$
++91 7462894713 $|$
+\href{https://github.com/ShaunakMishra25}{GitHub} $|$
+\href{https://linkedin.com/in/shaunakmishra25}{LinkedIn}
+\end{center}
+\vspace{-6pt}
+
+%-----------SUMMARY-----------------
+\section{Career Summary}
+\begin{itemize}[leftmargin=0.15in, label={}]
+  \small{\item{
+    Full-Stack Engineer with hands-on experience building a production Android app in React Native (Expo) and backends in Go and Node.js on PostgreSQL. Owns end-to-end design of database schemas, REST APIs, and containerized deployment (Docker, Azure, Vercel, Railway).
+  }}
+\end{itemize}
+\vspace{-14pt}
+
+%-----------EDUCATION-----------------
+\section{Education}
+\begin{tabular*}{0.97\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}
+\textbf{Institute of Technical Education and Research, SOA University} & Bhubaneswar, India \\
+\textit{B.Tech in Computer Science \& Engineering $|$ CGPA: \textbf{8.72 / 10} $|$ Expected Graduation: \textbf{Jun 2027}} & Sep 2023 -- Present
+\end{tabular*}
+\vspace{-2pt}
+
+%-----------SKILLS-----------------
+\section{Skills}
+\begin{itemize}[leftmargin=0.15in, label={}]
+  \small{\item{
+    \textbf{Languages}: TypeScript, JavaScript, Go, Python \\
+    \textbf{Frontend \& Mobile}: React, React Native (Expo), Next.js, Redux, Zustand, React Query \\
+    \textbf{Backend}: Node.js, Express, Go (Gin), REST API Design, JWT Auth \\
+    \textbf{Database}: PostgreSQL (sqlc, migrations, query optimization), MySQL, MongoDB, Cosmos DB \\
+    \textbf{DevOps \& Cloud}: Docker, Linux, GitHub Actions, Azure Container Apps, Vercel, Railway \\
+    \textbf{Tools \& SDKs}: Firebase (Auth, FCM, Storage), Razorpay, Azure OpenAI, Git, GDB
+  }}
+\end{itemize}
+\vspace{-14pt}
+
+%-----------PROJECTS-----------------
+\section{Projects}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{Gumla Home Delivery Service --- React Native (Expo) Android App}{}
+{React Native, Expo, Go (Gin), PostgreSQL, Docker, Razorpay, Firebase}{2026}
+{GitHub: ShaunakMishra25/GHDFrontend}
+\resumeItemListStart
+\item Built a production-grade e-commerce Android app serving dual customer/admin roles in a single \textbf{React Native (Expo)} codebase for groceries and essentials delivery; in final testing ahead of Play Store release
+\item Designed a 12-table \textbf{PostgreSQL} schema with type-safe queries via \textbf{sqlc} and a \textbf{Go (Gin)} backend on a Handler $\rightarrow$ Service $\rightarrow$ Repository architecture; Dockerized and deployed on Railway
+\item Implemented Firebase phone auth + JWT with refresh-token rotation, Razorpay payments with webhook idempotency, FCM push with exponential-backoff retry, and Zustand-persisted offline cart
+\resumeItemListEnd
+
+\resumeSubheading
+{WorkflowOS --- Multi-Agent Data Processing System}{}
+{Python, TypeScript, Azure OpenAI, Cosmos DB, Next.js, Azure Container Apps}{2026}
+{GitHub: ShaunakMishra25/workflow-os}
+\resumeItemListStart
+\item Built a 5-agent pipeline that extracts and structures meeting-transcript data into actionable project plans with inter-agent handoff; Next.js dashboard; Dockerized and deployed on Azure Container Apps for the Microsoft Build AI Hackathon 2026
+\resumeItemListEnd
+
+\resumeSubheading
+{Brain Tumor Diagnosis --- Benchmarking Study}{}
+{Python, PyTorch, OpenCV, Grad-CAM --- ResNet, DenseNet, MambaOut}{2025 -- Present}
+{GitHub: ShaunakMishra25/Brain-Tumor}
+\resumeItemListStart
+\item Designed an end-to-end benchmarking pipeline evaluating 15+ deep learning architectures on MRI datasets; improved minority-class F1 by $\sim$12\% and reached $\sim$99.5\% accuracy with MambaOut; research paper in preparation under faculty supervision
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+\vspace{-6pt}
+
+%-----------EXPERIENCE-----------------
+\section{Experience}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{Founding Full Stack Engineer}{Remote}
+{MentoMania --- AI-Powered Mentorship Marketplace}{Dec 2025 -- Mar 2026}
+{Live \,|\, GitHub: ShaunakMishra25/MentorHub}
+\resumeItemListStart
+\item Architected and deployed a mentorship marketplace as sole engineer: MongoDB schema, REST APIs (Next.js), and Vercel deployment
+\item Reduced page load time by $\sim$30\% via SSR, lazy loading, and memoization; set component-driven standards adopted by a 3-member team
+\resumeItemListEnd
+
+\resumeSubheading
+{Frontend Developer}{Remote}
+{CN Nexus --- Coding Ninjas Club, SOA University}{Jun 2025 -- Aug 2025}
+{GitHub: ShaunakMishra25/nexus-hub-org}
+\resumeItemListStart
+\item Built 10+ reusable React components adopted across the platform and optimized filtering logic for DSA problem discovery
+\item Resolved 15+ UI/logic bugs and integrated REST APIs with clean data-handling patterns
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+\vspace{-6pt}
+
+%-----------OPEN SOURCE-----------------
+\section{Open Source}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{OpenFoodFacts JavaScript SDK}{}
+{JavaScript, Unit Testing --- Merged PR \#646}{Jun 2025}
+{GitHub: ShaunakMishra25/openfoodfacts-js/pull/646}
+\resumeItemListStart
+\item Implemented product image folder logic and unit tests in a production open-source SDK; refactored on maintainer feedback for consistent data handling
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+\vspace{-8pt}
+
+%-----------ACHIEVEMENTS-----------------
+\section{Achievements}
+\resumeItemListStart
+\item Core Technical Team Member, CodingNinjas 10X on Campus, SOA University (Sep 2025 -- Present); mentor 50+ students in DSA and problem-solving
+\item 300+ problems solved on LeetCode (Arrays, Graphs, DP, Trees, Sliding Window)
+\resumeItemListEnd
+\end{document}

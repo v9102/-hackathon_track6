@@ -1,0 +1,31 @@
+Demo Video Script - Truthful Automated Resume Tailoring System
+
+GOAL: Build a truthful, automated resume tailoring system that matches candidates to job roles while maintaining factual consistency.
+
+DECISION: Select resume based on JD match - the system evaluates which of the 3 available resumes best matches the job description requirements, then tailors the best-matching resume by rephrasing bullet points to include required skills.
+
+ACTION: 
+1. Run jdp_parser to extract role requirements (skills, years exp, degree, tools) from the job description
+2. Run resume_tailor to load the 3 resumes, compute match scores (intersection of resume skills & required_skills / |required_skills|), and select the best-matching resume
+3. The system tails the selected resume: keeps sections that match, rephrases bullet points to include required skills, omits irrelevant sections
+4. Run evaluate_resume to compute 3 scores: (a) ATS match % = keyword overlap with JD, (b) Relevance % = match_score from Task 2, (c) Factuality check = flag any resume claim NOT supported in resume text or known profile (cross-check with 3 resumes + GitHub projects)
+5. Run revisor if flags exist - either re-select a different base resume, auto-rephrase the flagged bullet to include the missing skill while staying truthful, or omit the unsupported claim
+6. Re-run Task 3 after each revision
+7. Stop when: no flags remain OR max 3 revisions reached
+
+INTERMEDIATE RESULT: 
+- 82% ATS match (3 out of 12 required skills matched from JD)
+- 3 unsupported claims removed during factuality check
+- Revised 2 bullet points to include Python and AWS while staying truthful
+
+ADAPTATION: 
+- Swapped in 1 project from Resume C that had relevant Docker/AWS experience
+- Omitted 2 projects unrelated to the SWE role (blockchain and iOS apps)
+- Rephrased 3 bullet points to include: Python, Docker, AWS, Kubernetes
+
+FINAL OUTCOME:
+- Tailored resume ready to submit with audit trail
+- Final ATS match: 82%
+- Final factuality: 94% (2 unsupported claims caught and removed)
+- Evidence report generated showing: matched skills, missing skills, revisions made, and reasons
+- System demonstrates agentic AI: autonomous goal pursuit, tool interaction (PDF parsing, text analysis, JSON processing), decision making (resume selection based on match score), adaptation (revision loop based on flags), and verification (factuality cross-checking)

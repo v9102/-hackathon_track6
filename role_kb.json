@@ -1,0 +1,30 @@
+{
+  "title": "Unknown Role",
+  "years_exp": 3,
+  "required_skills": [
+    "Node.js",
+    "SQL",
+    "React",
+    "JavaScript",
+    "Git"
+  ],
+  "preferred_skills": [
+    "TypeScript",
+    "Docker",
+    "AWS"
+  ],
+  "degree": "B.S. ",
+  "tools": [
+    "TypeScript",
+    "JavaScript",
+    "React",
+    "Node",
+    "Docker",
+    "AWS",
+    "Git"
+  ],
+  "responsibilities": [
+    "Build web applications, collaborate with team, debug and maintain code"
+  ],
+  "red_flags": []
+}

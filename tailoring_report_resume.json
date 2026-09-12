@@ -1,0 +1,52 @@
+{
+  "match_score": 60.0,
+  "resume_skills": [
+    "AI",
+    "Auth",
+    "Azure",
+    "Azure OpenAI",
+    "Docker",
+    "Express",
+    "Firebase",
+    "Git",
+    "GitHub",
+    "Go",
+    "JWT",
+    "JavaScript",
+    "Linux",
+    "MongoDB",
+    "MySQL",
+    "Next.js",
+    "Node",
+    "PostgreSQL",
+    "PyTorch",
+    "Python",
+    "REST API",
+    "React",
+    "Testing",
+    "TypeScript",
+    "Unit Testing"
+  ],
+  "required_skills": [
+    "Git",
+    "JavaScript",
+    "Node.js",
+    "React",
+    "SQL"
+  ],
+  "preferred_skills": [
+    "AWS",
+    "Docker",
+    "TypeScript"
+  ],
+  "kept_bullets": [
+    "No experience bullets found; using skills summary"
+  ],
+  "removed_bullets": [],
+  "rewritten_bullets": [],
+  "tailored_bullets": [
+    "Professional with skills in React, Linux, Git, Python, REST API"
+  ],
+  "role_title": "Unknown Role",
+  "source_resume": "ShaunakMishra_Resume.pdf"
+}

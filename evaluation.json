@@ -1,0 +1,53 @@
+{
+  "ats_match_percent": 75.0,
+  "relevance_percent": 60.0,
+  "factuality_score": 85,
+  "flags": [
+    {
+      "claim": "Resume doesn't mention build needed for: Build web applications, collaborate with team, debug and mai",
+      "severity": "medium"
+    }
+  ],
+  "resume_skills": [
+    "AI",
+    "Auth",
+    "Azure",
+    "Azure OpenAI",
+    "Docker",
+    "Express",
+    "Firebase",
+    "Git",
+    "GitHub",
+    "Go",
+    "JWT",
+    "JavaScript",
+    "MongoDB",
+    "MySQL",
+    "Next.js",
+    "Node",
+    "PostgreSQL",
+    "PyTorch",
+    "Python",
+    "REST API",
+    "React",
+    "Testing",
+    "TypeScript",
+    "Unit Testing"
+  ],
+  "required_skills": [
+    "Git",
+    "JavaScript",
+    "Node.js",
+    "React",
+    "SQL"
+  ],
+  "matched_skills": [
+    "Git",
+    "JavaScript",
+    "React"
+  ],
+  "missing_skills": [
+    "Node.js",
+    "SQL"
+  ]
+}

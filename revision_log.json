@@ -1,0 +1,21 @@
+{
+  "revisions": [
+    {
+      "step": 1,
+      "flags_addressed": [
+        "Resume doesn't mention build needed for: Build web applications, collaborate with team, debug and mai"
+      ],
+      "changes": [
+        "Rephrased to include Python"
+      ],
+      "reason": "Addressed 1 of 1 flags",
+      "new_ats": 75.0,
+      "new_relevance": 60.0,
+      "new_factuality": 85
+    }
+  ],
+  "final_ats": 75.0,
+  "final_relevance": 60.0,
+  "final_factuality": 85,
+  "status": "max_revisions_reached"
+}

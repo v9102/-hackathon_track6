@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 
 def extract_skills_from_text(text: str) -> set[str]:
@@ -254,7 +254,6 @@ def render_tailored_pdf(tailored_text: str, template_path: Path, output_path: Pa
         Path to the generated PDF
     """
     import subprocess
-    import os
     
     # Read the template
     with open(template_path, 'r', encoding='utf-8') as f:
@@ -263,14 +262,14 @@ def render_tailored_pdf(tailored_text: str, template_path: Path, output_path: Pa
     # Replace placeholders with tailored content
     # Find and replace the tailored bullets section
     # For now, just append a Tailoring Modifications section
-    tailoring_section = f"""\section{{Tailoring Modifications}}
+    tailoring_section = r"""\section{Tailoring Modifications}
 
 \begin{itemize}[leftmargin=*]
-\item Resume tailored to emphasize required skills from job description\n\end{itemize}"""
+\item Resume tailored to emphasize required skills from job description\end{itemize}"""
     
     # Insert the tailoring section before \end{document}
-    if "\end{document}" in template:
-        template = template.replace("\end{document}", tailoring_section + "\end{document}")
+    if r"\end{document}" in template:
+        template = template.replace(r"\end{document}", tailoring_section + r"\end{document}")
     
     # Write the modified template to a temporary file
     temp_template = output_path.parent / "temp_template.tex"
@@ -279,7 +278,7 @@ def render_tailored_pdf(tailored_text: str, template_path: Path, output_path: Pa
     
     # Compile LaTeX to PDF
     try:
-        result = subprocess.run(
+        subprocess.run(
             ["pdflatex", "-interaction=nonstopmode", "-output-directory=", 
              str(output_path.parent), str(temp_template)],
             capture_output=True,

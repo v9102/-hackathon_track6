@@ -1,21 +1,17 @@
 """Tests for the tools module - JD Parser and configuration."""
 
-import json
-import os
 from pathlib import Path
 
-import pytest
-
-from app.tools.jdp_parser import (
-    parse_required_skills,
-    parse_preferred_skills,
-    parse_years_exp,
-    parse_degree_req,
-    parse_tools_tech,
-    parse_responsibilities,
-    build_role_kb,
-)
 from app.core.config import settings
+from app.tools.jdp_parser import (
+    build_role_kb,
+    parse_degree_req,
+    parse_preferred_skills,
+    parse_required_skills,
+    parse_responsibilities,
+    parse_tools_tech,
+    parse_years_exp,
+)
 
 
 class TestJdpParser:
@@ -67,7 +63,6 @@ class TestConfig:
 
     def test_settings_exist(self):
         """Test that settings object is properly configured."""
-        from app.core.config import settings
         assert settings is not None
         assert hasattr(settings, "base_dir")
         assert hasattr(settings, "storage_dir")
@@ -75,7 +70,6 @@ class TestConfig:
 
     def test_path_independence(self):
         """Test that paths are pathlib.Path objects."""
-        from app.core.config import settings
         assert isinstance(settings.base_dir, Path)
         assert isinstance(settings.storage_dir, Path)
         assert isinstance(settings.role_kb_path, Path)

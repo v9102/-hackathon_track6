@@ -8,13 +8,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
-
-try:
-    from fpdf import FPDF
-    HAS_FPDF = True
-except ImportError:
-    HAS_FPDF = False
+from typing import Any, Dict, List, Set
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:

@@ -17,29 +17,29 @@ Key Features:
 __version__ = "2.0.0"
 
 # Re-export key components for convenience
+from app.agents import EvaluationAgent, RevisionAgent, TailorAgent
 from app.core.config import settings
-from app.agents import TailorAgent, EvaluationAgent, RevisionAgent
 from app.tools.jdp_parser import (
-    parse_required_skills,
-    parse_preferred_skills,
-    parse_years_exp,
-    parse_degree_req,
-    parse_tools_tech,
-    parse_responsibilities,
     build_role_kb,
+    parse_degree_req,
+    parse_preferred_skills,
+    parse_required_skills,
+    parse_responsibilities,
+    parse_tools_tech,
+    parse_years_exp,
 )
 
 __all__ = [
-    "__version__",
-    "settings",
-    "TailorAgent",
     "EvaluationAgent",
     "RevisionAgent",
-    "parse_required_skills",
-    "parse_preferred_skills",
-    "parse_years_exp",
-    "parse_degree_req",
-    "parse_tools_tech",
-    "parse_responsibilities",
+    "TailorAgent",
+    "__version__",
     "build_role_kb",
+    "parse_degree_req",
+    "parse_preferred_skills",
+    "parse_required_skills",
+    "parse_responsibilities",
+    "parse_tools_tech",
+    "parse_years_exp",
+    "settings",
 ]

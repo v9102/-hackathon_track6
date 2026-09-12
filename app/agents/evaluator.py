@@ -14,10 +14,8 @@ support for claims and instead flags unsupported statements for revision.
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from app.core.config import settings
 from app.tools.jdp_parser import extract_skills_from_text
 
 

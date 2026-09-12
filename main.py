@@ -9,16 +9,16 @@ Usage:
     streamlit run dashboard.py
 """
 
+from change_report import main as change_report_main
+from evaluate_resume import main as evaluate_resume_main
 from jdp_parser import main as jdp_parser_main
 from resume_tailor import main as resume_tailor_main
-from evaluate_resume import main as evaluate_resume_main
 from revisor import main as revisor_main
-from change_report import main as change_report_main
 
 __all__ = [
-    "jdp_parser_main",
-    "resume_tailor_main", 
-    "evaluate_resume_main",
-    "revisor_main",
     "change_report_main",
+    "evaluate_resume_main",
+    "jdp_parser_main",
+    "resume_tailor_main",
+    "revisor_main",
 ]

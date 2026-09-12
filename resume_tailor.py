@@ -13,7 +13,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
@@ -79,7 +79,7 @@ def tailor_latex_resume(
     resume: Dict[str, str],
     role_kb: Dict[str, Any],
     template_path: Path,
-) -> Tuple[str, Dict[str, any]]:
+) -> tuple[str, dict[str, Any]]:
     """Tailor a LaTeX resume to match the role requirements.
 
     Reads the LaTeX template, applies modifications based on skill matching,
@@ -201,8 +201,6 @@ def tailor_latex_resume(
     # Strategy: insert skill mentions into existing \resumeItemList items
 
     # Find \resumeItemListStart and \resumeItemListEnd positions
-    item_start_pattern = r"\\resumeItemListStart"
-    item_end_pattern = r"\\resumeItemListEnd"
 
     # For now, we'll modify the Skills section to emphasize required skills
     # and add a note about tailored bullets
@@ -236,17 +234,16 @@ def modify_latex_bullets(
     Inserts the tailored bullets into the Projects section of the LaTeX template.
     Only adds skills that are actually present in the resume - no fabrication.
     """
-    required_skills = set(role_kb.get("required_skills", []))
-    tools = role_kb.get("tools", [])
+    set(role_kb.get("required_skills", []))
+    role_kb.get("tools", [])
 
     # Find the Projects section
     # We'll insert tailored bullet items after \resumeItemListStart
     
     # Find where to insert - after \resumeItemListStart
-    insert_pattern = r"(\\resumeItemListStart)"
     
     # Count existing bullets in the LaTeX to know how many to replace
-    existing_bullets = re.findall(
+    re.findall(
         r"\\resumeItemListStart(.*?)\\resumeItemListEnd", 
         latex_source, 
         re.DOTALL
@@ -290,7 +287,7 @@ def modify_latex_bullets(
 def compile_latex(latex_path: Path) -> Path:
     """Compile LaTeX source to PDF using pdflatex."""
     import subprocess
-    result = subprocess.run(
+    subprocess.run(
         ["pdflatex", "-interaction=nonstopmode", "-output-directory=", 
          str(latex_path.parent), str(latex_path)],
         capture_output=True,
@@ -302,7 +299,7 @@ def compile_latex(latex_path: Path) -> Path:
         return pdf_path
     else:
         # Try with the full path
-        result2 = subprocess.run(
+        subprocess.run(
             ["pdflatex", "-interaction=nonstopmode", "-output-directory=str(" + str(latex_path.parent) + ")", str(latex_path)],
             capture_output=True,
             text=True,

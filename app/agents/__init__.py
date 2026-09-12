@@ -10,8 +10,8 @@ Resume Tailoring System. Each agent is designed to be:
 
 from __future__ import annotations
 
-from app.agents.tailor import TailorAgent
 from app.agents.evaluator import EvaluationAgent
 from app.agents.revisor import RevisionAgent
+from app.agents.tailor import TailorAgent
 
-__all__ = ["TailorAgent", "EvaluationAgent", "RevisionAgent"]
+__all__ = ["EvaluationAgent", "RevisionAgent", "TailorAgent"]

@@ -1,13 +1,10 @@
 """Tests for the agents module - Tailor, Evaluator, Revisor."""
 
-import json
-from pathlib import Path
 
-import pytest
 
-from app.agents.tailor import TailorAgent
 from app.agents.evaluator import EvaluationAgent
 from app.agents.revisor import RevisionAgent
+from app.agents.tailor import TailorAgent
 
 
 class TestTailorAgent:

@@ -7,7 +7,6 @@ import argparse
 import json
 import os
 import re
-import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -95,7 +94,7 @@ def revise_resume(
         revision_log["status"] = "no_flags"
         return revision_log
 
-    current_match_score = evaluation.get("relevance_percent", 0)
+    evaluation.get("relevance_percent", 0)
     revisions_done = 0
 
     while flags and revisions_done < max_revisions:
@@ -120,12 +119,11 @@ def revise_resume(
                 # For high severity, omit the unsupported claim
                 revision["flags_addressed"].append(flag_text)
                 revision["changes"].append(f"Omitted unsupported claim: {flag_text[:50]}...")
-                revision["reason"] = f"High severity flag: omitted unsupported claim"
+                revision["reason"] = "High severity flag: omitted unsupported claim"
                 # No new flag generated
             elif severity == "medium":
                 # Try to auto-rephrase to include missing skill
                 # Find which skill is missing from the bullet
-                bullet = flag_text
                 # Extract bullet text - find it from the tailoring report
                 matched = re.search(r'"original"\s*:\s*"([^"]{10,80})"', str(tailoring_report))
                 if matched:
@@ -273,7 +271,7 @@ def main():
     # If revised, create final resume
     if revision_log.get("status") == "completed" and revision_log.get("revisions"):
         # Get the tailored resume text from the tailoring report
-        tailored_path = args.tailoring.parent / "tailored_resume.pdf" if args.tailining is None else None
+        args.tailoring.parent / "tailored_resume.pdf" if args.tailining is None else None
 
         # For now, just output the log
         print(f"Revisions complete: {revision_log['status']}")

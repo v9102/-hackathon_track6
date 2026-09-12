@@ -14,13 +14,8 @@ or experience, only rephrases existing evidence or removes unsupported claims.
 
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any, Dict, List, Optional
-
-from app.core.config import settings
-from app.agents.evaluator import compute_ats_match, compute_relevance
 
 
 class RevisionAgent:
@@ -28,7 +23,6 @@ class RevisionAgent:
     
     def __init__(self) -> None:
         """Initialize the RevisionAgent."""
-        pass
     
     def revise(self, evaluation: Dict[str, Any], max_revisions: int = 3) -> Dict[str, Any]:
         """Execute the revision loop based on evaluation flags.
@@ -54,7 +48,7 @@ class RevisionAgent:
             revision_log["reason"] = "No flags - resume passes factuality check"
             return revision_log
         
-        current_evaluation = dict(evaluation)
+        dict(evaluation)
         
         for revision_num in range(1, max_revisions + 1):
             revision: Dict[str, Any] = {
@@ -83,14 +77,14 @@ class RevisionAgent:
                     rephrased = self._try_rephrase_flag(flag)
                     if rephrased is not None:
                         revision["changes"].append(
-                            f"Rephrased to include missing skill"
+                            "Rephrased to include missing skill"
                         )
                         addressed_flags.append(flag_text)
                         revision["flags_addressed"].append(flag_text)
                     else:
                         # Can't rephrase truthfully - omit
                         revision["changes"].append(
-                            f"Omitted unsupported claim (cannot rephrase truthfully)"
+                            "Omitted unsupported claim (cannot rephrase truthfully)"
                         )
                         addressed_flags.append(flag_text)
                         revision["flags_addressed"].append(flag_text)

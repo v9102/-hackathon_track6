@@ -1,12 +1,12 @@
 #!/usr/bin/env streamlit
 "Resume Tailoring System Dashboard"
 
-import streamlit as st
 import json
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+
+import streamlit as st
 
 # Page config
 st.set_page_config(

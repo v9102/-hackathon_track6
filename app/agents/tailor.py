@@ -14,15 +14,13 @@ factual consistency constraints.
 
 from __future__ import annotations
 
-import json
-import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from app.core.config import settings
-from app.tools.jdp_parser import extract_text_from_pdf, extract_skills_from_text
 from app.agents.evaluator import EvaluationAgent
 from app.agents.revisor import RevisionAgent
+from app.core.config import settings
+from app.tools.jdp_parser import extract_skills_from_text, extract_text_from_pdf
 
 
 class TailorAgent:
@@ -70,14 +68,12 @@ class TailorAgent:
     
     def evaluate_resume(self, eval_text: str, jd_text: str) -> Dict[str, Any]:
         """Evaluate resume factuality and ATS match against JD."""
-        from app.agents.evaluator import EvaluationAgent
         
         evaluator = EvaluationAgent()
         return evaluator.evaluate(eval_text, jd_text)
     
     def revise_resume(self, evaluation: Dict[str, Any], max_revisions: int = 3) -> Dict[str, Any]:
         """Run the revision loop based on evaluation flags."""
-        from app.agents.revisor import RevisionAgent
         
         revisor = RevisionAgent()
         return revisor.revise(evaluation, max_revisions)
@@ -90,7 +86,6 @@ class TailorAgent:
         
         # Save as text-based report
         # In production, compile with: pdflatex ShaunakMishra_Resume.tex
-        resume_analysis = {"full_text": tailored_text, "skills": self.resume_skills}
         facts = self.evaluate_resume(tailored_text, "") if tailored_text else {"flags": []}
         
         content = "Resume Tailoring Report\n========================\n"
@@ -99,7 +94,7 @@ class TailorAgent:
         content += f"Required Skills: {self.role_kb.get('required_skills', [])}\n"
         content += f"Matched Skills: {self.resume_skills & set(self.role_kb.get('required_skills', []))}\n"
         content += f"Missing Skills: {set(self.role_kb.get('required_skills', [])) - self.resume_skills}\n"
-        content += f"\nEvaluation:\n"
+        content += "\nEvaluation:\n"
         content += f"  ATS Match: {facts.get('ats_match_percent', 0)}%\n"
         content += f"  Relevance: {facts.get('relevance_percent', 0)}%\n"
         content += f"  Factuality: {facts.get('factuality_score', 0)}\n"

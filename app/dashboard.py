@@ -1,4 +1,5 @@
 """Streamlit Dashboard for Resume Tailoring System.
+import json
 
 Provides a web interface for the complete resume tailoring pipeline:
 - Parse job descriptions
@@ -10,9 +11,9 @@ Provides a web interface for the complete resume tailoring pipeline:
 
 from __future__ import annotations
 
-import streamlit as st
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+
+import streamlit as st
 
 # Page config
 st.set_page_config(
@@ -111,7 +112,6 @@ if page == "Pipeline":
                         
                         # Step 3: Evaluate
                         st.info("Step 3: Evaluating Resume...")
-                        from app.tools.jdp_parser import extract_text_from_pdf
                         resume_text = extract_text_from_pdf(tailored_path)
                         
                         from app.main import run_task as run_main2
@@ -142,8 +142,7 @@ if page == "Pipeline":
                         st.success("Pipeline complete! Check the results below.")
                         
                     except Exception as e:
-                        st.error(f"Pipeline failed: {str(e)}")
-                        import traceback
+                        st.error(f"Pipeline failed: {e!s}")
                         st.exception(e)
         
         # Display results if available
@@ -368,7 +367,7 @@ elif page == "Task 4: Revision":
         st.subheader("Revision Log")
         st.json({
             "status": rev_data.get("status"),
-            "steps": len(re_data.get("revisions", [])),
+            "steps": len(rev_data.get("revisions", [])),
             "final_ats": rev_data.get("final_ats"),
             "final_factuality": rev_data.get("final_factuality"),
         })

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -9,26 +8,6 @@ if __name__ == "__main__":
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 from app.core.config import settings
-
-
-def main() -> None:
-    print("=" * 60)
-    print("Resume Tailoring System - Agentic AI")
-    print("=" * 60)
-    print(f"\nSystem Configuration:")
-    print(f"  - LLM Model: {settings.llm_model}")
-    print(f"  - TAVILY API: {'Configured' if settings.tavily_api_key else 'Not configured'}")
-    print(f"  - Base Directory: {settings.base_dir}")
-    print(f"  - Storage Directory: {settings.storage_dir}")
-    print(f"  - Role KB: {settings.role_kb_path}")
-    print(f"\nQuickstart Commands:")
-    print(f"  1. Parse JD:     python3 -m app.main --task parse --jd \"Your JD text\"")
-    print(f"  2. Tailor Resume:python3 -m app.main --task tailor --resume Resumes/ShaunakMishra_Resume.pdf --role SWE")
-    print(f"  3. Evaluate:     python3 -m app.main --task evaluate --resume tailored_resume.pdf --jd \"JD text\"")
-    print(f"  4. Revise:       python3 -m app.main --task revise --eval evaluation.json --tailoring tailoring_report.json")
-    print(f"  5. Reports:      python3 -m app.main --task reports --tailoring tailoring_report.json --revisions revision_log.json")
-    print(f"  6. Dashboard:    streamlit run dashboard.py")
-    print("=" * 60)
 
 
 def run_task(task: str, **kwargs) -> None:
@@ -49,7 +28,7 @@ def run_task(task: str, **kwargs) -> None:
     elif task == "tailor":
         from app.agents.tailor import TailorAgent
         resume_path = Path(kwargs.get("resume_path", "Resumes/ShaunakMishra_Resume.pdf"))
-        role = kwargs.get("role", "SWE")
+        kwargs.get("role", "SWE")
         
         if not resume_path.exists():
             print(f"Error: Resume not found at {resume_path}")
@@ -80,7 +59,7 @@ def run_task(task: str, **kwargs) -> None:
         evaluator = EvaluationAgent()
         evaluation = evaluator.evaluate(resume_text, jd_text)
         
-        print(f"Evaluation Results:")
+        print("Evaluation Results:")
         print(f"  ATS Match: {evaluation.get('ats_match_percent', 0)}%")
         print(f"  Relevance: {evaluation.get('relevance_percent', 0)}%")
         print(f"  Factuality: {evaluation.get('factuality_score', 0)}")
@@ -112,7 +91,7 @@ def run_task(task: str, **kwargs) -> None:
         revisor = RevisionAgent()
         revision_log = revisor.revise(evaluation, max_revisions=3)
         
-        print(f"Revision Complete!")
+        print("Revision Complete!")
         print(f"  Status: {revision_log.get('status')}")
         print(f"  Steps: {len(revision_log.get('revisions', []))}")
         print(f"  Final ATS: {revision_log.get('final_ats', 0)}%")
@@ -121,7 +100,7 @@ def run_task(task: str, **kwargs) -> None:
         
         if Path("evidence_report.json").exists():
             with open("evidence_report.json") as f:
-                print(f"  Evidence report already generated")
+                print("  Evidence report already generated")
     
     elif task == "reports":
         tailoring_path = Path(kwargs.get("tailoring_path", "tailoring_report_resume.json"))
@@ -182,7 +161,6 @@ def run_task(task: str, **kwargs) -> None:
             "final_factuality_score": revisions.get("final_factuality", 100),
         }
         
-        import os
         output_path = Path("evidence_report.json")
         with open(output_path, "w") as f:
             json.dump(evidence, f, indent=2)
@@ -206,7 +184,7 @@ def run_task(task: str, **kwargs) -> None:
             json.dump(evidence, f, indent=2)
         
         print(f"\nMachine-readable report written to {output_path}")
-        print(f"Human-readable report can be saved to: change_report.txt")
+        print("Human-readable report can be saved to: change_report.txt")
     
     else:
         print(f"Unknown task: {task}")
@@ -217,19 +195,19 @@ def main() -> None:
     print("=" * 60)
     print("Resume Tailoring System - Agentic AI")
     print("=" * 60)
-    print(f"\nSystem Configuration:")
+    print("\nSystem Configuration:")
     print(f"  - LLM Model: {settings.llm_model}")
     print(f"  - TAVILY API: {'Configured' if settings.tavily_api_key else 'Not configured'}")
     print(f"  - Base Directory: {settings.base_dir}")
     print(f"  - Storage Directory: {settings.storage_dir}")
     print(f"  - Role KB: {settings.role_kb_path}")
-    print(f"\nQuickstart Commands:")
-    print(f"  1. Parse JD:     python3 -m app.main --task parse --jd \"Your JD text\"")
-    print(f"  2. Tailor Resume:python3 -m app.main --task tailor --resume Resumes/ShaunakMishra_Resume.pdf --role SWE")
-    print(f"  3. Evaluate:     python3 -m app.main --task evaluate --resume tailored_resume.pdf --jd \"JD text\"")
-    print(f"  4. Revise:       python3 -m app.main --task revise --eval evaluation.json --tailoring tailoring_report.json")
-    print(f"  5. Reports:      python3 -m app.main --task reports --tailoring tailoring_report.json --revisions revision_log.json")
-    print(f"  6. Dashboard:    streamlit run dashboard.py")
+    print("\nQuickstart Commands:")
+    print("  1. Parse JD:     python3 -m app.main --task parse --jd \"Your JD text\"")
+    print("  2. Tailor Resume:python3 -m app.main --task tailor --resume Resumes/ShaunakMishra_Resume.pdf --role SWE")
+    print("  3. Evaluate:     python3 -m app.main --task evaluate --resume tailored_resume.pdf --jd \"JD text\"")
+    print("  4. Revise:       python3 -m app.main --task revise --eval evaluation.json --tailoring tailoring_report.json")
+    print("  5. Reports:      python3 -m app.main --task reports --tailoring tailoring_report.json --revisions revision_log.json")
+    print("  6. Dashboard:    streamlit run dashboard.py")
     print("=" * 60)
 
 

@@ -1,15 +1,13 @@
 """Tests for the Resume Tailoring System."""
 
-import json
 import os
 from pathlib import Path
 
-import pytest
+from evaluate_resume import compute_ats_match, compute_relevance
 
 # Import all main modules
-from jdp_parser import build_role_kb, parse_required_skills, parse_preferred_skills
+from jdp_parser import build_role_kb, parse_preferred_skills, parse_required_skills
 from resume_tailor import compute_match_score, load_resume_pdf
-from evaluate_resume import compute_ats_match, compute_relevance, check_factuality
 from revisor import load_evaluation
 
 

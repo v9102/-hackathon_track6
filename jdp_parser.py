@@ -61,8 +61,7 @@ def parse_required_skills(jd_text: str) -> List[str]:
     excluded = {"and", "or", "but", "nor", "for", "yet", "so", "as", "if", "until",
                 "while", "of", "to", "in", "on", "by", "at", "from", "up", "about",
                 "into", "over", "through", "after", "beneath", "under", "above",
-                "below", "between", "through", "during", "before", "between",
-                "since", "without", "against", "among", "around", "throughout",
+                "below", "between", "during", "before", "since", "without", "against", "among", "around", "throughout",
                 "despite", "towards", "upon", "via", "vs", "vs\\.?"}
     for item in items:
         item = item.strip().rstrip(".,")

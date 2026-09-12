@@ -37,3 +37,6 @@ env/
 
 # Hackathon specific
 *.pdf (generated outputs)
+
+# Per-run artifacts (self-contained, reproducible via `python -m app.main run`)
+storage/runs/

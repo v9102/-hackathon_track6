@@ -1,31 +1,30 @@
-Demo Video Script - Truthful Automated Resume Tailoring System
+Demo Video Script - Autonomous Agentic Resume Tailoring (Goal -> Decision -> Action -> ... -> Outcome)
 
-GOAL: Build a truthful, automated resume tailoring system that matches candidates to job roles while maintaining factual consistency.
+GOAL: Build a truthful, fully autonomous resume tailoring agent that matches a candidate to a role while NEVER fabricating experience. Every logged decision maps to a real, evidence-backed change; rejected ideas are recorded as rejected.
 
-DECISION: Select resume based on JD match - the system evaluates which of the 3 available resumes best matches the job description requirements, then tailors the best-matching resume by rephrasing bullet points to include required skills.
+DEMO PART 1 - The default profile (honest accept): 
+1. Run: python3 -m app.main run
+2. The agent parses the JD into a role knowledge base, parses all 3 candidate resumes (Shaunak, AI/ML Engineer, DevOps Engineer) from PDFs, and evaluates the original resumes (ATS %, relevance %, factuality %, format %).
+3. The planner decides the best action. For the default role profile the original Shaunak resume already meets acceptance, so the agent records 0 decisions and accepts it as-is: final_status = accepted, factuality 100%, a verified final PDF is produced.
+4. Show the run directory storage/runs/<run_id>/ with state.json (full audit trail), final_report.txt, and tailored_resume_final.pdf.
 
-ACTION: 
-1. Run jdp_parser to extract role requirements (skills, years exp, degree, tools) from the job description
-2. Run resume_tailor to load the 3 resumes, compute match scores (intersection of resume skills & required_skills / |required_skills|), and select the best-matching resume
-3. The system tails the selected resume: keeps sections that match, rephrases bullet points to include required skills, omits irrelevant sections
-4. Run evaluate_resume to compute 3 scores: (a) ATS match % = keyword overlap with JD, (b) Relevance % = match_score from Task 2, (c) Factuality check = flag any resume claim NOT supported in resume text or known profile (cross-check with 3 resumes + GitHub projects)
-5. Run revisor if flags exist - either re-select a different base resume, auto-rephrase the flagged bullet to include the missing skill while staying truthful, or omit the unsupported claim
-6. Re-run Task 3 after each revision
-7. Stop when: no flags remain OR max 3 revisions reached
+DEMO PART 2 - A JD that forces adaptation (surface / reject / verify):
+1. Run: python3 -m app.main run --jd data/sample_jd.txt
+2. This full-stack JD lists skills the resume supports (Python, TypeScript, ...) and skills it does NOT support (Kafka, Kubernetes, Redis).
+3. DECISION - iteration 1: 'Surface required skills into existing project bullets'. ACTION: the agent modifies a COPY of the resume, surfacing authentic subtitle evidence into the WorkflowOS project bullet ("Python", "TypeScript"). INTERMEDIATE RESULT: bullet diffs and before/after recorded; evaluation re-run.
+4. ADAPTATION - iterations 2-3: the agent PROPOSES adding 'Kafka' then 'Kubernetes'. Each is REJECTED because the candidate's original resume provides no authentic evidence for it; the skill joins the unsatisfiable set and is never re-proposed.
+5. RE-EVALUATION + FINAL VERIFICATION: the final PDF is rendered via pdflatex, verified to be a valid artifact with all required sections, and the final scores are recorded (factuality 100%, format 100%).
+6. FINAL OUTCOME: max_iterations_reached with a clean 4-decision audit trail (2 accepted surface actions, 2 rejected probes, each with evidence and before/after text).
+7. Show the final reproducible run output and highlight that factuality never drops below 100% because unsupported skills are refused.
 
-INTERMEDIATE RESULT: 
-- 82% ATS match (3 out of 12 required skills matched from JD)
-- 3 unsupported claims removed during factuality check
-- Revised 2 bullet points to include Python and AWS while staying truthful
+WHY IT IS AGENTIC, NOT HARD-CODED:
+- Autonomous goal pursuit: the loop chooses accept / surface / probe from the live evaluation.
+- Tool interaction: pdftotext, LaTeX rendering, PDF verification, JSON state persistence.
+- Decision making: each decision picks a target and records evidence, before/after diffs, and evaluation deltas.
+- Adaptation: rollback on regression; unsatisfiable skills are tracked so ideas are never retried pointlessly.
+- Verification: real PDF artifact checks (exists, required sections, size) and per-iteration re-evaluation.
 
-ADAPTATION: 
-- Swapped in 1 project from Resume C that had relevant Docker/AWS experience
-- Omitted 2 projects unrelated to the SWE role (blockchain and iOS apps)
-- Rephrased 3 bullet points to include: Python, Docker, AWS, Kubernetes
-
-FINAL OUTCOME:
-- Tailored resume ready to submit with audit trail
-- Final ATS match: 82%
-- Final factuality: 94% (2 unsupported claims caught and removed)
-- Evidence report generated showing: matched skills, missing skills, revisions made, and reasons
-- System demonstrates agentic AI: autonomous goal pursuit, tool interaction (PDF parsing, text analysis, JSON processing), decision making (resume selection based on match score), adaptation (revision loop based on flags), and verification (factuality cross-checking)
+HONESTY GUARANTEES DEMONSTRATED:
+- Skills fabricated into bullets are never allowed: probing Kafka/Kubernetes fails loudly with the reason recorded.
+- The default role profile correctly accepts the original resume with 0 decisions - the system refuses to make changes just to look busy.
+- Unsupported claims count is always 0 in the final evaluation.

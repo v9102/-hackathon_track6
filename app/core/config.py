@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     temperature: float = 0.0
 
+    # Agent loop configuration
+    max_iterations: int = 3
+    target_ats: float = 80.0
+    target_relevance: float = 80.0
+    requires_full_factuality: bool = True
+    min_format_score: float = 80.0
+
     # File Paths - Absolute via pathlib
     @property
     def base_dir(self) -> Path:
@@ -50,6 +57,26 @@ class Settings(BaseSettings):
     def reports_dir(self) -> Path:
         """Generated reports directory within storage."""
         return self.storage_dir / "reports"
+
+    @property
+    def runs_dir(self) -> Path:
+        """Per-run artifact sandbox: storage/runs/<run_id>/."""
+        return self.storage_dir / "runs"
+
+    @property
+    def assets_dir(self) -> Path:
+        """Base document templates directory."""
+        return self.base_dir / "app" / "assets"
+
+    @property
+    def default_jd_path(self) -> Path:
+        """Sample JD for demo runs."""
+        return self.base_dir / "data" / "sample_jd.txt"
+
+    @property
+    def default_template_path(self) -> Path:
+        """LaTeX template reused for rendering (base_dir)."""
+        return self.base_dir / "ShaunakMishra_Resume.tex"
 
     # Derived paths
     @property

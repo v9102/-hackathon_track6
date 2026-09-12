@@ -19,31 +19,18 @@ import re
 from pathlib import Path
 from typing import Any
 
+from app.tools.skills import (
+    CANONICAL_ALIASES,
+    extract_canonical_skills,
+    normalize_skill,
+)
+
 logger = logging.getLogger(__name__)
 
 
 def extract_skills_from_text(text: str) -> set[str]:
-    """Extract skill mentions from resume/text."""
-    common_skills = [
-        "Python", "Java", "Go", "Rust", "TypeScript", "JavaScript", "C++", "C#",
-        "React", "Node", "Express", "Next.js", "Angular", "Vue",
-        "PostgreSQL", "MySQL", "MongoDB", "Redis",
-        "Docker", "Kubernetes", "AWS", "Azure", "GCP",
-        "Git", "GitHub", "GitLab",
-        "TensorFlow", "PyTorch", "scikit-learn",
-        "Jenkins", "Terraform", "ArgoCD",
-        "SQL", "REST API", "JWT", "Auth",
-        "Machine Learning", "AI",
-        "Data Structures", "Algorithms",
-        "Testing", "Unit Testing",
-        "Agile", "Scrum",
-        "Firebase", "Azure OpenAI",
-    ]
-    found: set[str] = set()
-    for skill in common_skills:
-        if re.search(rf"\b{re.escape(skill)}\b", text, re.IGNORECASE):
-            found.add(skill)
-    return found
+    """Extract canonical skill mentions from resume/text."""
+    return extract_canonical_skills(text or "")
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
@@ -58,8 +45,9 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
 
 
 def parse_required_skills(jd_text: str) -> list[str]:
-    """Extract required skills from JD text."""
+    """Extract required skills from JD text (canonicalized)."""
     skills: set[str] = set()
+    has_labeled_section = False
     
     # Pattern 1: "Required skills:" section
     if "required skills" in jd_text.lower():
@@ -67,24 +55,31 @@ def parse_required_skills(jd_text: str) -> list[str]:
         idx = lower_jd.find("required skills")
         if idx >= 0:
             after = jd_text[idx + len("required skills"):]
-            for trigger in ["nice-to-have", "responsibilities", "education", "experience"]:
-                idx2 = after.lower().find(trigger)
-                if idx2 >= 0:
-                    after = after[:idx2]
-                    break
+            # Truncate at the EARLIEST later label (text order, not list order).
+            positions = [
+                p for p in (after.lower().find(t) for t in [
+                    "nice-to-have",
+                    "preferred skills",
+                    "responsibilities",
+                    "education",
+                    "experience",
+                ]) if p >= 0
+            ]
+            if positions:
+                after = after[: min(positions)]
             items = re.split(r"[,;]\s*|\n", after)
             for item in items:
                 item = item.strip().rstrip(".,")
                 item = item.strip(":|- ")
                 if item and len(item) > 1:
-                    skills.add(item)
+                    skills.add(normalize_skill(item))
+            if skills:
+                has_labeled_section = True
     
-    # Pattern 2: Fallback - look for skill patterns in whole text
-    common_tech = ["Python", "Java", "Go", "JavaScript", "TypeScript", "React", "Node",
-                   "SQL", "Docker", "Kubernetes", "AWS", "Git"]
-    for term in common_tech:
-        if re.search(rf"\b{re.escape(term)}\b", jd_text, re.IGNORECASE):
-            skills.add(term)
+    # Pattern 2: Fallback - only when no explicit "Required skills" section.
+    # Preferred/nice-to-have/body tech must NOT leak into the required list.
+    if not has_labeled_section:
+        skills.update(extract_canonical_skills(jd_text))
     
     return sorted(skills)
 
@@ -99,11 +94,14 @@ def parse_preferred_skills(jd_text: str) -> list[str]:
         idx = lower_jd.find("preferred skills")
         if idx >= 0:
             after = jd_text[idx + len("preferred skills"):]
-            for trigger in ["nice-to-have", "responsibilities", "education", "experience"]:
-                idx2 = after.lower().find(trigger)
-                if idx2 >= 0:
-                    after = after[:idx2]
-                    break
+            positions = [
+                p for p in (after.lower().find(t) for t in [
+                    "nice-to-have", "responsibilities",
+                    "education", "experience",
+                ]) if p >= 0
+            ]
+            if positions:
+                after = after[: min(positions)]
             items = re.split(r"[,;]\s*|\n", after)
             for item in items:
                 item = item.strip().rstrip(".,")
@@ -115,10 +113,13 @@ def parse_preferred_skills(jd_text: str) -> list[str]:
     if "nice-to-have" in jd_text.lower():
         idx = jd_text.lower().find("nice-to-have")
         after = jd_text[idx + len("nice-to-have"):]
-        for trigger in ["education", "experience"]:
-            idx2 = after.lower().find(trigger)
-            if idx2 >= 0:
-                after = after[:idx2]
+        positions = [
+            p for p in (after.lower().find(t) for t in
+                        ["responsibilities", "education", "experience"])
+            if p >= 0
+        ]
+        if positions:
+            after = after[: min(positions)]
         items = re.split(r"[,;]\s*|\n", after)
         for item in items:
             item = item.strip().rstrip(".,")
@@ -166,20 +167,13 @@ def parse_degree_req(jd_text: str) -> str | None:
 
 
 def parse_tools_tech(jd_text: str) -> list[str]:
-    """Extract tools and technologies mentioned in JD."""
+    """Extract tools and technologies mentioned in JD (canonicalized)."""
     tech: list[str] = []
-    common_tech = [
-        "Python", "Java", "Go", "Rust", "TypeScript", "JavaScript", "C++", "C#",
-        "React", "Node", "Express", "Next.js", "Angular",
-        "PostgreSQL", "MySQL", "MongoDB", "Redis",
-        "Docker", "Kubernetes", "AWS", "Azure", "GCP",
-        "Git", "GitHub", "GitLab",
-        "TensorFlow", "PyTorch", "scikit-learn",
-        "Jenkins", "Terraform", "ArgoCD",
-    ]
-    for term in common_tech:
-        if re.search(rf"\b{re.escape(term)}\b", jd_text, re.IGNORECASE) and term not in tech:
-            tech.append(term)
+    for canonical in CANONICAL_ALIASES:
+        if re.search(
+            rf"\b{re.escape(canonical)}\b", jd_text, re.IGNORECASE
+        ) and canonical not in tech:
+            tech.append(canonical)
     return tech
 
 

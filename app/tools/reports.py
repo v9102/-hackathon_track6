@@ -53,7 +53,7 @@ def generate_human_report(
     report_lines.append(
         f"Final ATS match: {revision_log.get('final_ats', 0)}%, "
         f"Factuality: {revision_log.get('final_factuality', 100)}% "
-        f"({sum(1 for _ in range(10))} supported claims)"
+        f"({len(tailoring_report.get('kept_bullets', [])) + len(tailoring_report.get('supported_bullets', []))} supported claims)"
     )
 
     return " ".join(report_lines)

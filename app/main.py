@@ -1,254 +1,111 @@
 #!/usr/bin/env python3
+"""Single authoritative entry point for the autonomous resume agent.
+
+Usage:
+    python -m app.main                      # default demo run
+    python -m app.main run --jd <file>      # run with a specific JD file
+    python -m app.main run --help
+"""
+
 from __future__ import annotations
 
-import json
+import argparse
 import sys
 from pathlib import Path
-from typing import Any
 
+from app.agents.planner import _DEFAULT_JD, AgenticPlanner
 from app.core.config import settings
 
 
-def _resolve_path(value: Path | str | None, default: Path) -> Path:
-    """Resolve a user path; bare filenames are placed under storage/."""
-    if value is None:
-        return default
-    path = Path(value)
-    if not path.is_absolute() and len(path.parts) == 1:
-        return settings.storage_dir / path.name
-    return path
+def _list_candidate_resumes(resume_dir: Path) -> list[Path]:
+    if resume_dir.is_dir():
+        return sorted(p for p in resume_dir.glob("*.pdf") if p.is_file())
+    return [resume_dir]
 
 
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    settings.ensure_storage()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-
-
-def run_task(task: str, **kwargs: Any) -> None:
-    """Execute a specific task by name."""
-    print(f"\nRunning task: {task}")
-    settings.ensure_storage()
-
-    if task == "parse":
-        from app.agents.tailor import TailorAgent
-
-        jd_text = kwargs.get("jd_text", "")
-        if not jd_text:
-            print("Error: --jd text required for parse task")
-            return
-
-        title = kwargs.get("title", "Unknown Role")
-        output_path = _resolve_path(kwargs.get("output"), settings.parsed_role_kb_path)
-
-        tailor = TailorAgent()
-        role_kb = tailor.parse_job_description(jd_text, title=title)
-        _write_json(output_path, role_kb)
-        print(f"JD parsed successfully! Role KB written to {output_path}")
-
-    elif task == "tailor":
-        from app.agents.tailor import TailorAgent
-
-        default_resume = settings.resume_dir / "ShaunakMishra_Resume.pdf"
-        resume_path = Path(kwargs.get("resume_path", default_resume))
-        jd_text = kwargs.get("jd_text", "")
-        role = kwargs.get("role", "SWE")
-        output_path = _resolve_path(kwargs.get("output_path"), settings.tailored_resume_path)
-
-        if not resume_path.exists():
-            print(f"Error: Resume not found at {resume_path}")
-            return
-
-        agent = TailorAgent()
-        results = agent.run_pipeline(
-            jd_text=jd_text or "Required skills: Python, React, SQL.",
-            resume_path=resume_path,
-            tailored_output=output_path,
-        )
-
-        role_kb = results["role_kb"] or {}
-        evaluation = results["evaluation"]
-        revision_log = results["revision_log"]
-        resume_analysis = results["resume_analysis"]
-
-        required_skills = role_kb.get("required_skills", [])
-        resume_skills = sorted(resume_analysis.get("skills", []))
-        matched = sorted(set(resume_skills) & set(required_skills))
-
-        tailoring_report = {
-            "role_title": role_kb.get("title", role),
-            "source_resume": Path(resume_analysis.get("file_path", str(resume_path))).name,
-            "match_score": round(results["match_score"] * 100, 2),
-            "required_skills": required_skills,
-            "resume_skills": resume_skills,
-            "matched_skills": matched,
-            "missing_skills": sorted(set(required_skills) - set(resume_skills)),
-            "preferred_skills": role_kb.get("preferred_skills", []),
-            "kept_bullets": [],
-            "removed_bullets": [],
-            "rewritten_bullets": [],
-        }
-
-        _write_json(settings.parsed_role_kb_path, role_kb)
-        _write_json(settings.tailoring_report_path, tailoring_report)
-        _write_json(settings.evaluation_path, evaluation)
-        _write_json(settings.revision_log_path, revision_log)
-
-        print("Resume tailored successfully!")
-        print(f"  Output: {results['rendered_path']}")
-        print(f"  Tailoring report: {settings.tailoring_report_path}")
-
-    elif task == "evaluate":
-        resume_path = _resolve_path(
-            kwargs.get("resume_path"),
-            settings.tailored_resume_path,
-        )
-        jd_text = kwargs.get("jd_text", "")
-
-        if not resume_path.exists():
-            print(f"Error: Resume not found at {resume_path}")
-            return
-
-        from app.agents.evaluator import EvaluationAgent
-        from app.tools.jdp_parser import extract_text_from_pdf
-
-        resume_text = extract_text_from_pdf(resume_path)
-        evaluator = EvaluationAgent()
-        evaluation = evaluator.evaluate(resume_text, jd_text)
-
-        output_path = _resolve_path(kwargs.get("output"), settings.evaluation_path)
-        _write_json(output_path, evaluation)
-
-        print("Evaluation Results:")
-        print(f"  ATS Match: {evaluation.get('ats_match_percent', 0)}%")
-        print(f"  Relevance: {evaluation.get('relevance_percent', 0)}%")
-        print(f"  Factuality: {evaluation.get('factuality_score', 0)}")
-        print(f"  Flags: {len(evaluation.get('flags', []))} unsupported claims")
-        print(f"  Written to: {output_path}")
-
-        if evaluation.get("flags"):
-            for flag in evaluation["flags"][:3]:
-                print(f"    - {flag.get('claim', 'Unknown claim')[:80]}...")
-
-    elif task == "revise":
-        eval_path = _resolve_path(kwargs.get("eval_path"), settings.evaluation_path)
-        tailoring_path = _resolve_path(
-            kwargs.get("tailoring_path"),
-            settings.tailoring_report_path,
-        )
-        max_revisions = int(kwargs.get("max_revisions", 3))
-
-        if not eval_path.exists():
-            print(f"Error: Evaluation file not found at {eval_path}")
-            return
-
-        if not tailoring_path.exists():
-            print(f"Error: Tailoring file not found at {tailoring_path}")
-            return
-
-        with eval_path.open(encoding="utf-8") as f:
-            evaluation = json.load(f)
-
-        from app.agents.revisor import RevisionAgent
-
-        revisor = RevisionAgent()
-        revision_log = revisor.revise(evaluation, max_revisions=max_revisions)
-
-        output_path = _resolve_path(kwargs.get("output"), settings.revision_log_path)
-        _write_json(output_path, revision_log)
-
-        print("Revision Complete!")
-        print(f"  Status: {revision_log.get('status')}")
-        print(f"  Steps: {len(revision_log.get('revisions', []))}")
-        print(f"  Final ATS: {revision_log.get('final_ats', 0)}%")
-        print(f"  Final Relevance: {revision_log.get('final_relevance', 0)}%")
-        print(f"  Final Factuality: {revision_log.get('final_factuality', 100)}")
-        print(f"  Written to: {output_path}")
-
-    elif task == "reports":
-        tailoring_path = _resolve_path(
-            kwargs.get("tailoring_path"),
-            settings.tailoring_report_path,
-        )
-        revisions_path = _resolve_path(
-            kwargs.get("revisions_path"),
-            settings.revision_log_path,
-        )
-
-        if not tailoring_path.exists():
-            print(f"Error: Tailoring file not found at {tailoring_path}")
-            return
-
-        if not revisions_path.exists():
-            print(f"Error: Revision file not found at {revisions_path}")
-            return
-
-        with tailoring_path.open(encoding="utf-8") as f:
-            tailoring = json.load(f)
-        with revisions_path.open(encoding="utf-8") as f:
-            revisions = json.load(f)
-
-        from app.tools.reports import generate_human_report, generate_machine_report
-
-        human_report = generate_human_report(tailoring, revisions)
-        evidence = generate_machine_report(tailoring, revisions)
-
-        evidence_path = _resolve_path(kwargs.get("output"), settings.evidence_report_path)
-        human_path = _resolve_path(kwargs.get("human_output"), settings.change_report_path)
-
-        evidence_path.parent.mkdir(parents=True, exist_ok=True)
-        human_path.write_text(human_report, encoding="utf-8")
-        _write_json(evidence_path, evidence)
-
-        print("=" * 60)
-        print("HUMAN-READABLE REPORT")
-        print("=" * 60)
-        print(human_report)
-        print("=" * 60)
-        print(f"\nMachine-readable report written to {evidence_path}")
-        print(f"Human-readable report written to {human_path}")
-
+def run_pipeline(args: argparse.Namespace):
+    """Run the full autonomous agentic pipeline."""
+    jd_source: str = args.jd or ""
+    if not jd_source:
+        default_jd = settings.default_jd_path
+        if default_jd.exists():
+            jd_source = default_jd.read_text(encoding="utf-8")
+        else:
+            jd_source = _DEFAULT_JD
     else:
-        print(f"Unknown task: {task}")
-        print("Available tasks: parse, tailor, evaluate, revise, reports")
+        jd_path = Path(jd_source)
+        if jd_path.exists():
+            jd_source = jd_path.read_text(encoding="utf-8")
+
+    resume_files = _list_candidate_resumes(Path(args.resume_dir) if args.resume_dir else settings.resume_dir)
+    template_path = Path(args.template) if args.template else settings.default_template_path
+
+    print("=" * 72)
+    print("Autonomous Resume Agent - Goal -> Decision -> Action -> ... -> Outcome")
+    print("=" * 72)
+    print(f"  JD source      : {'(default sample)' if not args.jd else args.jd}")
+    print(f"  Candidate PDFs : {len(resume_files)} resume(s)")
+    print(f"  Template       : {template_path}")
+    print(f"  Max iterations : {settings.max_iterations}")
+    print("=" * 72)
+
+    planner = AgenticPlanner()
+    state = planner.run(jd_text=jd_source, resume_files=resume_files, template_path=template_path)
+
+    print("\nFINAL OUTCOME")
+    print("-" * 72)
+    print(f"  Run ID             : {state.run_id}")
+    print(f"  Final status       : {state.final_status}")
+    if state.selected_resume:
+        print(f"  Selected resume    : {state.selected_resume.name}")
+        print(f"  Selection score    : {state.selected_resume.selection_score}")
+        print(f"  Selection reason   : {state.selected_resume.reasoning}")
+
+    final = state.current_evaluation
+    if final:
+        print("  Final evaluation   :")
+        for key in ("ats_match_percent", "relevance_percent", "factuality_score", "format_score"):
+            print(f"      {key:<20}: {final.get(key)}")
+        print(f"      unsupported_claims : {len(final.get('unsupported_claims', []))}")
+
+    if state.decisions:
+        print(f"  Decisions          : {len(state.decisions)} "
+              f"({sum(1 for d in state.decisions if d.accepted)} accepted, "
+              f"{sum(1 for d in state.decisions if not d.accepted)} rejected/rolled-back)")
+        for decision in state.decisions:
+            mark = "OK " if decision.accepted else "REJ"
+            print(f"      [{mark}] iter {decision.iteration}: {decision.decision}")
+            if not decision.accepted:
+                print(f"             -> {decision.rollback_reason}")
+    if state.verification:
+        print("  Verification       :",
+              state.verification.get("valid"), "-",
+              state.verification.get("artifact"))
+    print("  Artifacts          :", state.run_dir)
+
+    final_report = Path(state.run_dir) / "final_report.txt"
+    if final_report.exists():
+        print(f"\nHuman-readable report written to: {final_report}")
+
+    return state
 
 
-def main() -> None:
-    print("=" * 60)
-    print("Resume Tailoring System - Agentic AI")
-    print("=" * 60)
-    print("\nSystem Configuration:")
-    print(f"  - LLM Model: {settings.llm_model}")
-    print(f"  - TAVILY API: {'Configured' if settings.tavily_api_key else 'Not configured'}")
-    print(f"  - Base Directory: {settings.base_dir}")
-    print(f"  - Storage Directory: {settings.storage_dir}")
-    print(f"  - Role KB: {settings.role_kb_path}")
-    print("\nQuickstart Commands:")
-    print('  1. Parse JD:     python3 -m app.main --task parse --jd "Your JD text"')
-    print("  2. Tailor Resume:python3 -m app.main --task tailor --resume Resumes/ShaunakMishra_Resume.pdf --role SWE")
-    print("  3. Evaluate:     python3 -m app.main --task evaluate --resume storage/tailored_resume.pdf --jd \"JD text\"")
-    print("  4. Revise:       python3 -m app.main --task revise")
-    print("  5. Reports:      python3 -m app.main --task reports")
-    print("  6. Dashboard:    streamlit run dashboard.py")
-    print("=" * 60)
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="app.main", description="Autonomous Resume Agent")
+    parser.add_argument("command", nargs="?", default="run", choices=["run", "demo"])
+
+    sub = parser.add_argument_group("run options")
+    sub.add_argument("--jd", default="", help="Path to a JD text file (defaults to data/sample_jd.txt or built-in sample)")
+    sub.add_argument("--resume-dir", default="", help="Directory (or PDF) with candidate resumes (default: Resumes/)")
+    sub.add_argument("--template", default="", help="LaTeX template path (default: ShaunakMishra_Resume.tex)")
+    sub.add_argument("--task", default="", help="Deprecated: legacy task modes removed; use 'run'.")
+
+    args = parser.parse_args()
+    if args.task:
+        print("Note: legacy --task modes have been replaced by the single agentic 'run' command.")
+    state = run_pipeline(args)
+    return 0 if state.final_status != "render_failed" else 1
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--task":
-        task_arg = sys.argv[2] if len(sys.argv) > 2 else ""
-        task_kwargs: dict[str, Any] = {}
-        i = 3
-        while i < len(sys.argv):
-            if sys.argv[i].startswith("--"):
-                key = sys.argv[i][2:].replace("-", "_")
-                if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("--"):
-                    task_kwargs[key] = sys.argv[i + 1]
-                    i += 2
-                else:
-                    i += 1
-            else:
-                i += 1
-
-        run_task(task_arg, **task_kwargs)
-    else:
-        main()
+    sys.exit(main())

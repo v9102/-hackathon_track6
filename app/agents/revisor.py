@@ -1,174 +1,174 @@
-"""Revision Agent - Automated Resume Reviser.
+"""Revision Agent - proposes the next best action in the agentic loop.
 
-The Revision Agent processes evaluation flags and determines the appropriate
-revision strategy:
-1. Re-phrase flagged bullet points to include missing skills while staying truthful
-2. Omit unsupported claims that cannot be truthfully rephrased
-3. Re-select a different base resume if available
-4. Re-run evaluation after each revision
-5. Stop when no flags remain or max 3 revisions reached
+The Revision Agent inspects the latest evaluation and, following the goal
+(take the selected resume from ``baseline`` to the JD target), decides a single
+next action:
 
-This agent maintains the truth-first principle - it never fabricates skills
-or experience, only rephrases existing evidence or removes unsupported claims.
+- ``surface_supported_skill`` — rephrase a bullet using a required skill that is
+  genuinely supported by the candidate's project tech stack, but not yet visible
+  in the rendered resume text.
+- ``remove_unsupported_claim`` — drop a claim that has no supporting evidence.
+- ``surface_unsupported`` — *proposed* adding a missing required skill that the
+  agent would like to include; this requires authentic evidence and is rejected
+  by the planner's evidence gate when none exists (documented adaptation).
+- ``accept`` — no further evidence-based improvement is possible; finalize.
+
+The agent never fabricates: any action that would introduce unsupported content
+is proposed only for explicit validation and is refused without real evidence.
 """
 
 from __future__ import annotations
 
-import re
 from typing import Any
+
+from app.tools.skills import canonicalize_list
 
 
 class RevisionAgent:
-    """Agent that handles resume revision based on evaluation flags."""
-    
+    """Agent that decides the next resume revision action."""
+
     def __init__(self) -> None:
         """Initialize the RevisionAgent."""
-    
-    def revise(self, evaluation: dict[str, Any], max_revisions: int = 3) -> dict[str, Any]:
-        """Execute the revision loop based on evaluation flags.
-        
-        Args:
-            evaluation: Evaluation results containing flags
-            max_revisions: Maximum number of revision iterations
-            
-        Returns:
-            Revision log with changes, reasons, and final state
+
+    def decide_next_action(
+        self,
+        evaluation: dict[str, Any],
+        role_kb: dict[str, Any],
+        evidence_map: dict[str, Any],
+        settings: Any,
+        unsatisfiable: set[str] | None = None,
+    ) -> dict[str, Any]:
+        """Decide the single best next action given the current evaluation.
+
+        ``unsatisfiable`` is the set of required skills already proven to lack
+        authentic evidence; they are never re-proposed (the agent adapts).
         """
+        target_ats = float(getattr(settings, "target_ats", 80.0))
+        ats = float(evaluation.get("ats_match_percent", 0.0))
+
+        supported_not_present = evaluation.get("supported_not_present", [])
+        unsupported_claims = evaluation.get("unsupported_claims", [])
+        missing = set(evaluation.get("missing_skills", []))
+
+        required = canonicalize_list(role_kb.get("required_skills", []))
+        required_without_evidence = sorted(
+            skill
+            for skill in required
+            if skill in missing
+            and not (
+                (skill in evidence_map) and evidence_map[skill].supported
+            )
+            and skill not in (unsatisfiable or set())
+        )
+
+        if supported_not_present and ats < target_ats:
+            skill = supported_not_present[0]
+            return {
+                "decision": f"Surface '{skill}' into its most relevant project bullet",
+                "decision_id": f"surface-{skill.lower()}",
+                "reason": (
+                    f"The JD requires '{skill}' and the candidate's project tech "
+                    f"stack supports it, but it is not visible in the rendered "
+                    f"resume text. Surfacing authentic evidence raises ATS coverage."
+                ),
+                "action": "surface_supported_skill",
+                "target": skill,
+                "requires_evidence": True,
+            }
+
+        if unsupported_claims:
+            return {
+                "decision": "Remove claims with no supporting candidate evidence",
+                "decision_id": "remove-unsupported",
+                "reason": f"{len(unsupported_claims)} claim(s) cannot be supported.",
+                "action": "remove_unsupported_claim",
+                "target": [c.get("claim", "") for c in unsupported_claims],
+                "requires_evidence": False,
+            }
+
+        if required_without_evidence and ats < target_ats:
+            skill = required_without_evidence[0]
+            return {
+                "decision": f"Weigh adding '{skill}' to the most relevant project bullet",
+                "decision_id": f"probe-{skill.lower()}",
+                "reason": (
+                    f"The JD requires '{skill}' and ATS is below {target_ats:.0f}. "
+                    f"The agent weighs adding it, but this needs authentic evidence."
+                ),
+                "action": "surface_unsupported",
+                "target": skill,
+                "requires_evidence": True,
+            }
+
+        return {
+            "decision": "Accept current artifact",
+            "decision_id": "accept",
+            "reason": "All evidence-based improvements are exhausted or targets met.",
+            "action": "accept",
+            "target": None,
+            "requires_evidence": False,
+        }
+
+    def revise(
+        self,
+        evaluation: dict[str, Any],
+        max_revisions: int = 3,
+    ) -> dict[str, Any]:
+        """Compatibility revision logger built on decide_next_action."""
+        revisions: list[dict[str, Any]] = []
         flags = evaluation.get("flags", [])
-        revision_log: dict[str, Any] = {
-            "revisions": [],
+
+        if not flags:
+            return {
+                "revisions": revisions,
+                "final_ats": evaluation.get("ats_match_percent", 0),
+                "final_relevance": evaluation.get("relevance_percent", 0),
+                "final_factuality": evaluation.get("factuality_score", 100),
+                "status": "completed",
+                "reason": "No flags - resume passes factuality check",
+                "total_flags": 0,
+            }
+
+        for step in range(1, max_revisions + 1):
+            decision = {
+                "action": (
+                    "remove_unsupported_claim"
+                    if flags
+                    else "accept"
+                ),
+                "reason": (
+                    f"Step {step}: {len(flags)} flag(s) present"
+                    if flags
+                    else "No actionable evidence-based deficiency."
+                ),
+            }
+            revisions.append(
+                {
+                    "step": step,
+                    "decision": decision["action"],
+                    "reason": decision["reason"],
+                    "flags_addressed": flags,
+                }
+            )
+            if decision["action"] == "accept":
+                break
+
+        if not flags:
+            status = "completed"
+            reason = "No flags - resume passes factuality check"
+        elif len(revisions) >= max_revisions:
+            status = "max_revisions_reached"
+            reason = f"Max {max_revisions} revisions reached"
+        else:
+            status = "completed"
+            reason = "Flags addressed"
+
+        return {
+            "revisions": revisions,
             "final_ats": evaluation.get("ats_match_percent", 0),
             "final_relevance": evaluation.get("relevance_percent", 0),
             "final_factuality": evaluation.get("factuality_score", 100),
-            "status": "completed" if not flags else "max_revisions_reached",
+            "status": status,
+            "reason": reason,
             "total_flags": len(flags),
         }
-        
-        if not flags:
-            revision_log["reason"] = "No flags - resume passes factuality check"
-            return revision_log
-        
-        dict(evaluation)
-        
-        for revision_num in range(1, max_revisions + 1):
-            revision: dict[str, Any] = {
-                "step": revision_num,
-                "flags_addressed": [],
-                "changes": [],
-                "reason": "",
-            }
-            
-            addressed_flags: list[str] = []
-            
-            for flag in flags:
-                flag_text = flag.get("claim", "")
-                severity = flag.get("severity", "low")
-                
-                if severity == "high":
-                    # High severity: omit the unsupported claim
-                    addressed_flags.append(flag_text)
-                    revision["changes"].append(
-                        f"Omitted unsupported claim (high severity): {flag_text[:80]}..."
-                    )
-                    revision["flags_addressed"].append(flag_text)
-                
-                elif severity == "medium":
-                    # Medium severity: try to rephrase to include missing skill
-                    rephrased = self._try_rephrase_flag(flag)
-                    if rephrased is not None:
-                        revision["changes"].append(
-                            "Rephrased to include missing skill"
-                        )
-                        addressed_flags.append(flag_text)
-                        revision["flags_addressed"].append(flag_text)
-                    else:
-                        # Can't rephrase truthfully - omit
-                        revision["changes"].append(
-                            "Omitted unsupported claim (cannot rephrase truthfully)"
-                        )
-                        addressed_flags.append(flag_text)
-                        revision["flags_addressed"].append(flag_text)
-                
-                else:
-                    # Low severity: skip or lightly adjust
-                    addressed_flags.append(flag_text)
-                    revision["flags_addressed"].append(flag_text)
-            
-            revision["reason"] = (
-                f"Addressed {len(revision['flags_addressed'])} of {len(flags)} flags "
-                f"in revision step {revision_num}"
-            )
-            
-            revision_log["revisions"].append(revision)
-            
-            # Check if all flags addressed
-            remaining_flags = [f for f in flags if f.get("claim") not in addressed_flags]
-            
-            if not remaining_flags:
-                revision_log["status"] = "completed"
-                revision_log["reason"] = f"All {len(flags)} flags addressed across {revision_num} revision(s)"
-                break
-            
-            # Re-evaluate with potentially modified content
-            # In a full implementation, this would re-render the resume
-            # and re-run the evaluator. For now, we simulate flag reduction.
-            flags = remaining_flags
-        
-        else:
-            # Loop completed without break - max revisions reached
-            revision_log["status"] = "max_revisions_reached"
-            revision_log["reason"] = f"Max {max_revisions} revisions reached with {len(flags)} remaining flags"
-        
-        return revision_log
-    
-    def _try_rephrase_flag(self, flag: dict[str, Any]) -> str | None:
-        """Attempt to rephrase a flagged bullet to include missing skill.
-        
-        Args:
-            flag: Evaluation flag dictionary containing the claim
-            
-        Returns:
-            Rephrased text if successful, None if cannot be done truthfully
-        """
-        claim = flag.get("claim", "")
-        
-        # Extract the supposed "missing skill" from the flag
-        # Pattern: "claims Python Django but resume only mentions Flask"
-        skill_match = re.search(r"claims\s+(\w+)", claim)
-        if not skill_match:
-            # Alternative pattern: look for skill after "but" or "needs"
-            skill_match = re.search(r"(?:but|needs)\s+(\w+)", claim, re.IGNORECASE)
-        
-        if not skill_match:
-            return None
-        
-        skill = skill_match.group(1)
-        
-        # Verify the skill is a known tech skill
-        known_skills = {
-            "python", "java", "go", "javascript", "typescript", "react", "node",
-            "sql", "docker", "kubernetes", "aws", "azure", "git",
-            "tensorflow", "pytorch", "scikit-learn", "jenkins", "terraform",
-            "angular", "vue", "c++", "c#", "postgresql", "mysql", "mongodb",
-            "firebase", "azure openai", "gitlab", "redis", "machine learning",
-            "ai", "data structures", "algorithms", "testing", "unit testing",
-            "agile", "scrum", "rest api", "jwt", "auth",
-        }
-        
-        if skill.lower() not in known_skills:
-            # Skill not recognized - don't add it
-            return None
-        
-        # Construct rephrased text
-        # Get the base text from the flag (everything before the skill mention)
-        base_text = re.sub(rf"\s+{skill}\b[^.]*", "", claim).strip()
-        
-        # Append the skill naturally
-        rephrased = f"{base_text} - enhanced with {skill}"
-        
-        # Basic truthfulness check: ensure the rephrased text doesn't
-        # invent accomplishments that aren't in the original claim
-        if len(rephrased) <= len(claim) + 20:  # Allow minor expansion
-            return rephrased
-        
-        return None

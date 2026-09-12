@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
-import logging
 """Resume Evaluator - evaluates tailored resumes against job descriptions."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
     """Extract text from a PDF file using PyPDF2 or pdftotext."""
     import subprocess
     result = subprocess.run(
-        ["pdftotext", str(pdf_path), "-"], capture_output=True, text=True
+        ["pdftotext", str(pdf_path), "-"], capture_output=True, text=True, check=False
     )
     if result.returncode != 0:
         raise ValueError(f"Failed to extract text from PDF: {result.stderr}")
@@ -202,8 +204,8 @@ def main():
                     "full_text": text,
                     "skills": extract_skills_from_text(text),
                 }
-            except Exception as e:
-                    logging.warning(f"Failed: {e}")
+            except (ValueError, TypeError, AttributeError) as e:
+                logger.warning(f"Failed to process {pdf_file}: {e}")
 
     # Factuality check
     flags = check_factuality(resume_text, role_kb, all_resumes)

@@ -1,5 +1,5 @@
+#!/usr/bin/env python3
 """Streamlit Dashboard for Resume Tailoring System.
-import json
 
 Provides a web interface for the complete resume tailoring pipeline:
 - Parse job descriptions
@@ -11,9 +11,14 @@ Provides a web interface for the complete resume tailoring pipeline:
 
 from __future__ import annotations
 
+import json
+import logging
 from pathlib import Path
 
 import streamlit as st
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Page config
 st.set_page_config(
@@ -141,7 +146,7 @@ if page == "Pipeline":
                         
                         st.success("Pipeline complete! Check the results below.")
                         
-                    except Exception as e:
+                    except (OSError, ValueError, TypeError, RuntimeError, FileNotFoundError) as e:
                         logger.error(f"Pipeline failed: {e}")
                         st.exception(e)
         

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Job Description Parser Tool.
 
 Extracts structured information from job description text or PDFs:
@@ -13,9 +14,12 @@ This tool is designed to be deterministic, reproducible, and testable.
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def extract_skills_from_text(text: str) -> set[str]:
@@ -46,7 +50,7 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
     """Extract text from a PDF file using pdftotext."""
     import subprocess
     result = subprocess.run(
-        ["pdftotext", str(pdf_path), "-"], capture_output=True, text=True
+        ["pdftotext", str(pdf_path), "-"], capture_output=True, text=True, check=False
     )
     if result.returncode != 0:
         raise ValueError(f"Failed to extract text from PDF: {result.stderr}")
@@ -174,9 +178,8 @@ def parse_tools_tech(jd_text: str) -> list[str]:
         "Jenkins", "Terraform", "ArgoCD",
     ]
     for term in common_tech:
-        if re.search(rf"\b{re.escape(term)}\b", jd_text, re.IGNORECASE):
-            if term not in tech:
-                tech.append(term)
+        if re.search(rf"\b{re.escape(term)}\b", jd_text, re.IGNORECASE) and term not in tech:
+            tech.append(term)
     return tech
 
 
@@ -284,6 +287,7 @@ def render_tailored_pdf(tailored_text: str, template_path: Path, output_path: Pa
             capture_output=True,
             text=True,
             timeout=30000,
+            check=False,
         )
         pdf_path = output_path.parent / (output_path.stem + ".pdf")
         
@@ -301,7 +305,7 @@ def render_tailored_pdf(tailored_text: str, template_path: Path, output_path: Pa
                 old_pdf.unlink()
         
         return pdf_path
-    except Exception as e:
+    except (OSError, ValueError, TypeError, RuntimeError, AttributeError) as e:
         print(f"LaTeX compilation error: {e}")
         # Fallback: create a simple text file
         output_path.parent.mkdir(parents=True, exist_ok=True)

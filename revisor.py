@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-import logging
 """Revisor - revises tailored resumes based on evaluation flags."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     from fpdf import FPDF
@@ -253,8 +255,8 @@ def main():
                 for page in pdf.pages:
                     text += page.extract_text() + "\n"
                 all_resumes[pdf_file.name] = {"full_text": text}
-            except Exception as e:
-                logging.warning(f"Revision error: {e}")
+            except (OSError, ValueError, TypeError, RuntimeError, AttributeError) as e:
+                logger.warning(f"Revision error: {e}")
 
     # Run revision loop
     revision_log = revise_resume(
@@ -272,7 +274,7 @@ def main():
     # If revised, create final resume
     if revision_log.get("status") == "completed" and revision_log.get("revisions"):
         # Get the tailored resume text from the tailoring report
-        args.tailoring.parent / "tailored_resume.pdf" if args.tailining is None else None
+        args.tailoring.parent / "tailored_resume.pdf" if args.tailoring is not None else None
 
         # For now, just output the log
         print(f"Revisions complete: {revision_log['status']}")

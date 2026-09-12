@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import logging
 """Resume Tailor - tailors LaTeX resumes to match job description requirements.
 
 Uses the provided LaTeX template format and modifies it based on JD matching.
@@ -11,17 +10,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
     """Extract text from a PDF file using pdftotext."""
     import subprocess
     result = subprocess.run(
-        ["pdftotext", str(pdf_path), "-"], capture_output=True, text=True
+        ["pdftotext", str(pdf_path), "-"], capture_output=True, text=True, check=False
     )
     if result.returncode != 0:
         raise ValueError(f"Failed to extract text from PDF: {result.stderr}")
@@ -288,25 +290,37 @@ def modify_latex_bullets(
 def compile_latex(latex_path: Path) -> Path:
     """Compile LaTeX source to PDF using pdflatex."""
     import subprocess
+
     subprocess.run(
-        ["pdflatex", "-interaction=nonstopmode", "-output-directory=", 
-         str(latex_path.parent), str(latex_path)],
+        [
+            "pdflatex",
+            "-interaction=nonstopmode",
+            "-output-directory=",
+            str(latex_path.parent),
+            str(latex_path),
+        ],
         capture_output=True,
         text=True,
         timeout=30000,
+        check=False,
     )
     pdf_path = latex_path.with_suffix(".pdf")
     if pdf_path.exists():
         return pdf_path
-    else:
-        # Try with the full path
-        subprocess.run(
-            ["pdflatex", "-interaction=nonstopmode", "-output-directory=str(" + str(latex_path.parent) + ")", str(latex_path)],
-            capture_output=True,
-            text=True,
-            timeout=30000,
-        )
-        return pdf_path if pdf_path.exists() else latex_path.parent / "resume.pdf"
+
+    subprocess.run(
+        [
+            "pdflatex",
+            "-interaction=nonstopmode",
+            f"-output-directory={latex_path.parent}",
+            str(latex_path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30000,
+        check=False,
+    )
+    return pdf_path if pdf_path.exists() else latex_path.parent / "resume.pdf"
 
 
 def main():
@@ -348,9 +362,10 @@ def main():
     # Compile to PDF
     try:
         pdf_path = compile_latex(output_path)
-        logger.warning(f"PDF compilation note: {e}")
-    except Exception as e:
-        print(f"PDF compilation note: {e}")
+        print(f"PDF compilation successful: {pdf_path}")
+    except (OSError, ValueError, TypeError, RuntimeError, FileNotFoundError) as exc:
+        logger.warning(f"PDF compilation note: {exc}")
+        print(f"PDF compilation note: {exc}")
         print("LaTeX source file generated successfully - compile with: pdflatex " + output_path.name)
 
 

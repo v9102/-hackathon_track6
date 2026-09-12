@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
-import logging
 """Job Description Parser - extracts role requirements from JD text or PDF."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
     """Extract text from a PDF file using pdftotext."""
     import subprocess
-    result = subprocess.run(["pdftotext", str(pdf_path), "-"], capture_output=True, text=True)
+    result = subprocess.run([
+        "pdftotext", str(pdf_path), "-"
+    ], capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise ValueError(f"Failed to extract text from PDF: {result.stderr}")
     return result.stdout
@@ -198,8 +202,8 @@ def search_role_kb(role_name: str, api_key: str) -> str:
             results = data.get("results", [])
             if results:
                 return results[0].get("content", "")
-    except Exception as e:
-        logging.warning(f"Could not get first result: {e}")
+    except (OSError, ValueError, TypeError, RuntimeError, ConnectionError) as e:
+        logger.warning(f"Could not get first result: {e}")
     return ""
 
 

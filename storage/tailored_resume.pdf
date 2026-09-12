@@ -1,0 +1,13 @@
+Resume Tailoring Report
+========================
+Role: hackathon_track6
+Match Score: 66.7%
+Required Skills: ['Git', 'JavaScript', 'Node', 'Node.js', 'React', 'SQL']
+Matched Skills: {'Node', 'JavaScript', 'React', 'Git'}
+Missing Skills: {'Node.js', 'SQL'}
+
+Evaluation:
+  ATS Match: 0.0%
+  Relevance: 0.0%
+  Factuality: 100
+  Flags: 0 unsupported claims

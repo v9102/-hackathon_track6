@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
 import sys
 from pathlib import Path
 
@@ -90,6 +91,53 @@ def run_pipeline(args: argparse.Namespace):
     return state
 
 
+def run_demo(args: argparse.Namespace):
+    """Narrated two-story demo: honest accept, then adaptive surface/reject."""
+    sample_jd = settings.base_dir / "data" / "sample_jd.txt"
+    user_jd = args.jd
+
+    part1_args = copy.copy(args)
+    part1_args.jd = user_jd or str(settings.default_jd_path)
+    print("=" * 72)
+    print("DEMO - PART 1: Default role profile (should be accepted as-is)")
+    print("=" * 72)
+    state1 = run_pipeline(part1_args)
+
+    part2_args = copy.copy(args)
+    part2_args.jd = user_jd or (str(sample_jd) if sample_jd.exists() else "")
+    print("\n" + "=" * 72)
+    print("DEMO - PART 2: Demanding JD (forces adaptation)")
+    print("=" * 72)
+    state2 = run_pipeline(part2_args)
+
+    print("\n" + "=" * 72)
+    print("WHY THIS IS AGENTIC (and honest)")
+    print("=" * 72)
+    rows = [
+        ("Accept story (default JD)", state1),
+        ("Adaptive story (sample JD)", state2),
+    ]
+    for label, state in rows:
+        accepted = sum(1 for d in state.decisions if d.accepted)
+        rejected = sum(1 for d in state.decisions if not d.accepted)
+        final = state.current_evaluation or {}
+        print(f"\n  {label}: final_status={state.final_status}, "
+              f"decisions={len(state.decisions)} "
+              f"({accepted} accepted, {rejected} rejected/rolled-back)")
+        print(f"      ats={final.get('ats_match_percent')} "
+              f"relevance={final.get('relevance_percent')} "
+              f"factuality={final.get('factuality_score')} "
+              f"format={final.get('format_score')} "
+              f"unsupported_claims={len(final.get('unsupported_claims', []))}")
+        print(f"      verified={bool(state.verification.get('valid'))} "
+              f"artifact={state.verification.get('artifact')}")
+    print("\n  Lessons: the default profile is accepted with 0 decisions (the agent")
+    print("  refuses to fabricate work), while the demanding JD surfaces authentic")
+    print("  skills and loudly REJECTS unverifiable ones (Kafka, Kubernetes) whose")
+    print("  probes are recorded with reasons and never repeated.")
+    return state2
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="app.main", description="Autonomous Resume Agent")
     parser.add_argument("command", nargs="?", default="run", choices=["run", "demo"])
@@ -103,7 +151,10 @@ def main() -> int:
     args = parser.parse_args()
     if args.task:
         print("Note: legacy --task modes have been replaced by the single agentic 'run' command.")
-    state = run_pipeline(args)
+    if args.command == "demo":
+        state = run_demo(args)
+    else:
+        state = run_pipeline(args)
     return 0 if state.final_status != "render_failed" else 1
 
 

@@ -21,6 +21,9 @@ pip install -e .
 ## 🚀 Full Agentic Pipeline (Task 6)
 
 ```bash
+# Narrated two-story demo: honest accept + adaptive surface/reject with recap
+python3 -m app.main demo
+
 # Run the autonomous agent against the default role profile
 python3 -m app.main run
 

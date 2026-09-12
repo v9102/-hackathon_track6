@@ -2,16 +2,15 @@
 
 import json
 import os
-import tempfile
 from pathlib import Path
 
 import pytest
 
 # Import all main modules
 from jdp_parser import build_role_kb, parse_required_skills, parse_preferred_skills
-from resume_tailor import load_resume, compute_match_score, tailor_latex_resume
+from resume_tailor import compute_match_score, load_resume_pdf
 from evaluate_resume import compute_ats_match, compute_relevance, check_factuality
-from revisor import load_evaluation, revise_resume
+from revisor import load_evaluation
 
 
 class TestJdpParser:
@@ -50,7 +49,7 @@ class TestResumeTailor:
         """Test that a resume can be loaded."""
         resume_path = "Resumes/ShaunakMishra_Resume.pdf"
         if os.path.exists(resume_path):
-            resume = load_resume(Path(resume_path))
+            resume = load_resume_pdf(Path(resume_path))
             assert "full_text" in resume
             assert "skills" in resume
 
@@ -95,5 +94,5 @@ class TestRevisor:
         if os.path.exists(eval_path):
             eval_data = load_evaluation(Path(eval_path))
             assert "ats_match_percent" in eval_data
-            "relevance_percent" in eval_data
-            "flags" in eval_data
+            assert "relevance_percent" in eval_data
+            assert "flags" in eval_data

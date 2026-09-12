@@ -6,7 +6,9 @@ build-backend = "setuptools.build_meta:__legacy__"
 name = "resume-tailoring"
 version = "2.0.0"
 description = "Autonomous, evidence-based resume agent (Track 6 hackathon)"
+readme = "README.md"
 requires-python = ">=3.9"
+license = { text = "MIT" }
 keywords = ["resume", "tailoring", "ATS", "agentic", "AI", "hackathon"]
 
 dependencies = [

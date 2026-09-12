@@ -1,7 +1,10 @@
 """Tests for the Resume Tailoring System."""
 
 import os
+import shutil
 from pathlib import Path
+
+import pytest
 
 from evaluate_resume import compute_ats_match, compute_relevance
 
@@ -9,6 +12,8 @@ from evaluate_resume import compute_ats_match, compute_relevance
 from jdp_parser import build_role_kb, parse_preferred_skills, parse_required_skills
 from resume_tailor import compute_match_score, load_resume_pdf
 from revisor import load_evaluation
+
+pdftotext_missing = shutil.which("pdftotext") is None
 
 
 class TestJdpParser:
@@ -43,6 +48,7 @@ class TestJdpParser:
 class TestResumeTailor:
     """Test cases for the Resume Tailor."""
 
+    @pytest.mark.skipif(pdftotext_missing, reason="pdftotext not installed (poppler-utils)")
     def test_load_resume(self):
         """Test that a resume can be loaded."""
         resume_path = "Resumes/ShaunakMishra_Resume.pdf"

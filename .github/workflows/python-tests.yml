@@ -35,14 +35,18 @@ jobs:
           pip install mypy
           mypy main.py dashboard.py jdp_parser.py resume_tailor.py evaluate_resume.py revisor.py change_report.py
 
+      - name: Install system tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+
       - name: Run Tests
         run: |
           pytest tests/ -v
 
       - name: Pipeline Smoke Test
         run: |
-          sudo apt-get update
-          sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended poppler-utils
+          sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended
           python -m app.main run > /tmp/pipeline.out 2>&1
           cat /tmp/pipeline.out
           test "$(ls storage/runs/*/tailored_resume_final.pdf | wc -l)" -ge 1

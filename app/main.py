@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import json
@@ -108,8 +109,8 @@ def run_task(task: str, **kwargs: Any) -> None:
             print(f"Error: Resume not found at {resume_path}")
             return
 
-        from app.tools.jdp_parser import extract_text_from_pdf
         from app.agents.evaluator import EvaluationAgent
+        from app.tools.jdp_parser import extract_text_from_pdf
 
         resume_text = extract_text_from_pdf(resume_path)
         evaluator = EvaluationAgent()

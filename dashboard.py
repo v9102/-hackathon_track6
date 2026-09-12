@@ -69,6 +69,7 @@ if task == "1: JD Parser":
             cwd=WORK_DIR,
             capture_output=True,
             text=True,
+            check=False,
         )
         st.code(cmd)
         st.success("Role KB parsed successfully!")

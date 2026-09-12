@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 """Resume Tailor - tailors LaTeX resumes to match job description requirements.
 
 Uses the provided LaTeX template format and modifies it based on JD matching.
@@ -13,7 +14,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
@@ -51,13 +52,13 @@ def extract_skills_from_text(text: str) -> set[str]:
     return found
 
 
-def load_role_kb(kb_path: Path) -> Dict[str, Any]:
+def load_role_kb(kb_path: Path) -> dict[str, Any]:
     """Load role knowledge base from JSON."""
     with open(kb_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def load_resume_pdf(resume_path: Path) -> Dict[str, str]:
+def load_resume_pdf(resume_path: Path) -> dict[str, str]:
     """Load a resume and extract its text and skills."""
     text = extract_text_from_pdf(resume_path)
     return {
@@ -76,8 +77,8 @@ def compute_match_score(resume_skills: set[str], required_skills: set[str]) -> f
 
 
 def tailor_latex_resume(
-    resume: Dict[str, str],
-    role_kb: Dict[str, Any],
+    resume: dict[str, str],
+    role_kb: dict[str, Any],
     template_path: Path,
 ) -> tuple[str, dict[str, Any]]:
     """Tailor a LaTeX resume to match the role requirements.
@@ -162,7 +163,7 @@ def tailor_latex_resume(
             tailored_bullets.append(bullet)
             if not has_required and skills_needed:
                 # Add a needed skill reference
-                skill = list(skills_needed)[0]
+                skill = next(iter(skills_needed))
                 augmented = f"{bullet} \textit{{{skill}}}"
                 tailored_bullets.append(augmented)
                 modifications["kept_bullets"].append(augmented)
@@ -182,9 +183,9 @@ def tailor_latex_resume(
     # Build the tailoring report
     report = {
         "match_score": round(match_score * 100, 2),
-        "resume_skills": sorted(list(resume_skills)),
-        "required_skills": sorted(list(required_skills)),
-        "preferred_skills": sorted(list(preferred_skills)),
+        "resume_skills": sorted(resume_skills),
+        "required_skills": sorted(required_skills),
+        "preferred_skills": sorted(preferred_skills),
         "kept_bullets": modifications["kept_bullets"][:5],
         "removed_bullets": modifications["removed_bullets"][:5],
         "rewritten_bullets": [r.get("new_text", r.get("original", "")) for r in modifications["rewritten_bullets"][:5]],
@@ -226,8 +227,8 @@ def tailor_latex_resume(
 
 def modify_latex_bullets(
     latex_source: str,
-    tailored_bullets: List[str],
-    role_kb: Dict[str, Any],
+    tailored_bullets: list[str],
+    role_kb: dict[str, Any],
 ) -> str:
     """Modify the LaTeX source to include tailored bullet points.
 
@@ -347,7 +348,7 @@ def main():
     # Compile to PDF
     try:
         pdf_path = compile_latex(output_path)
-        print(f"PDF compiled to {pdf_path}")
+        logger.warning(f"PDF compilation note: {e}")
     except Exception as e:
         print(f"PDF compilation note: {e}")
         print("LaTeX source file generated successfully - compile with: pdflatex " + output_path.name)

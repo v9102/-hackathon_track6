@@ -82,6 +82,21 @@ class Settings(BaseSettings):
         """Path for change report TXT."""
         return self.storage_dir / "change_report.txt"
 
+    @property
+    def evidence_report_path(self) -> Path:
+        """Path for machine-readable evidence report JSON."""
+        return self.storage_dir / "evidence_report.json"
+
+    @property
+    def parsed_role_kb_path(self) -> Path:
+        """Path for runtime-parsed role KB (written during JD parse)."""
+        return self.storage_dir / "role_kb.json"
+
+    def ensure_storage(self) -> Path:
+        """Create storage directory if missing and return its path."""
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+        return self.storage_dir
+
 
 # Singleton instance
 settings = Settings()

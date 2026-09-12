@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 """Job Description Parser - extracts role requirements from JD text or PDF."""
 
 from __future__ import annotations
@@ -8,7 +9,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
@@ -28,13 +29,13 @@ def extract_text_from_file(file_path: Path) -> str:
         return file_path.read_text(encoding="utf-8")
 
 
-def _find_marker_positions(text: str) -> Dict[str, int]:
+def _find_marker_positions(text: str) -> dict[str, int]:
     """Find the start position of each section marker in the JD text."""
     markers = [
         "required skills", "preferred skills", "nice-to-have",
         "responsibilities", "education", "experience", "tools"
     ]
-    positions: Dict[str, int] = {}
+    positions: dict[str, int] = {}
     for marker in markers:
         m = re.search(rf'{re.escape(marker)}[:\n]', text, re.IGNORECASE)
         if m:
@@ -42,7 +43,7 @@ def _find_marker_positions(text: str) -> Dict[str, int]:
     return positions
 
 
-def parse_required_skills(jd_text: str) -> List[str]:
+def parse_required_skills(jd_text: str) -> list[str]:
     """Extract required skills from JD text."""
     positions = _find_marker_positions(jd_text)
     req_start = positions.get("required skills", 0)
@@ -78,7 +79,7 @@ def parse_required_skills(jd_text: str) -> List[str]:
     return list(skills)[:20]
 
 
-def parse_preferred_skills(jd_text: str) -> List[str]:
+def parse_preferred_skills(jd_text: str) -> list[str]:
     """Extract preferred/nice-to-have skills from JD text."""
     positions = _find_marker_positions(jd_text)
     pre_start = positions.get("preferred skills", 0)
@@ -106,7 +107,7 @@ def parse_preferred_skills(jd_text: str) -> List[str]:
     return list(skills)[:10]
 
 
-def parse_years_exp(jd_text: str) -> Optional[int]:
+def parse_years_exp(jd_text: str) -> int | None:
     """Extract years of experience requirement."""
     matches = re.findall(
         r"\b(\d+)[\s+]\+?[\s]?years?[:\s]?(?:of\s+)?(?:experience|exp)\b",
@@ -120,7 +121,7 @@ def parse_years_exp(jd_text: str) -> Optional[int]:
     return None
 
 
-def parse_degree_req(jd_text: str) -> Optional[str]:
+def parse_degree_req(jd_text: str) -> str | None:
     """Extract degree requirement from JD text."""
     patterns = [
         r"(?:B\.?S?\.?|BA|BS|B\.?Tech|B\.?Eng)\s+(?:required|preferred)?",
@@ -133,7 +134,7 @@ def parse_degree_req(jd_text: str) -> Optional[str]:
     return None
 
 
-def parse_tools_tech(jd_text: str) -> List[str]:
+def parse_tools_tech(jd_text: str) -> list[str]:
     """Extract tools and technologies mentioned."""
     tech: list[str] = []
     common_tech = [
@@ -146,13 +147,12 @@ def parse_tools_tech(jd_text: str) -> List[str]:
         "Jenkins", "Terraform", "ArgoCD",
     ]
     for term in common_tech:
-        if re.search(rf"\b{re.escape(term)}\b", jd_text, re.IGNORECASE):
-            if term not in tech:
-                tech.append(term)
+        if re.search(rf"\b{re.escape(term)}\b", jd_text, re.IGNORECASE) and term not in tech:
+            tech.append(term)
     return tech
 
 
-def parse_responsibilities(jd_text: str) -> List[str]:
+def parse_responsibilities(jd_text: str) -> list[str]:
     """Extract responsibilities from JD text."""
     positions = _find_marker_positions(jd_text)
     resp_start = positions.get("responsibilities", 0)
@@ -198,8 +198,8 @@ def search_role_kb(role_name: str, api_key: str) -> str:
             results = data.get("results", [])
             if results:
                 return results[0].get("content", "")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(f"Could not get first result: {e}")
     return ""
 
 
@@ -207,8 +207,8 @@ def build_role_kb(
     title: str,
     jd_text: str,
     use_tavily: bool = False,
-    tavily_key: Optional[str] = None,
-) -> Dict[str, Any]:
+    tavily_key: str | None = None,
+) -> dict[str, Any]:
     """Build role knowledge base from JD text."""
     required_skills = parse_required_skills(jd_text)
     preferred_skills = parse_preferred_skills(jd_text)
@@ -230,7 +230,7 @@ def build_role_kb(
         if tavily_result:
             responsibilities = [tavily_result]
 
-    role_kb: Dict[str, Any] = {
+    role_kb: dict[str, Any] = {
         "title": title,
         "years_exp": years_exp,
         "required_skills": required_skills,

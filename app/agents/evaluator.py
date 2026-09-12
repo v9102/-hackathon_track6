@@ -14,7 +14,7 @@ support for claims and instead flags unsupported statements for revision.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from app.tools.jdp_parser import extract_skills_from_text
 
@@ -51,7 +51,7 @@ def compute_ats_match(resume_text: str, jd_text: str) -> float:
     return round(len(intersection) / len(jd_skills) * 100, 2)
 
 
-def compute_relevance(resume_skills: Set[str], required_skills: Set[str]) -> float:
+def compute_relevance(resume_skills: set[str], required_skills: set[str]) -> float:
     """Compute relevance % = match_score from skill intersection analysis.
     
     Args:
@@ -70,9 +70,9 @@ def compute_relevance(resume_skills: Set[str], required_skills: Set[str]) -> flo
 
 def check_factuality(
     resume_text: str,
-    role_kb: Dict[str, Any],
-    all_resumes: Optional[Dict[str, Dict[str, any]]] = None,
-) -> Dict[str, Any]:
+    role_kb: dict[str, Any],
+    all_resumes: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Check factuality - flag claims not supported in resume text or known profile.
     
     Args:
@@ -83,14 +83,14 @@ def check_factuality(
     Returns:
         Dictionary with factuality score and flags list
     """
-    flags: List[Dict[str, str]] = []
+    flags: list[dict[str, str]] = []
     resume_skills = extract_skills_from_text(resume_text)
     
     # Cross-check with other resumes if provided
     if all_resumes:
         resume_skill_set = set(resume_skills)
-        for other_name, other_data in all_resumes.items():
-            other_skills = set.extract_skills_from_text(other_data.get("full_text", ""))
+        for other_data in all_resumes.values():
+            other_skills = extract_skills_from_text(other_data.get("full_text", ""))
             # Skills in this resume but not in others may be exaggerated
             exaggerated = resume_skill_set - other_skills
             for skill in exaggerated:
@@ -106,7 +106,7 @@ def check_factuality(
         # Check across all resumes for actual LeetCode counts
         all_counts: list[int] = []
         if all_resumes:
-            for other_name, other_data in all_resumes.items():
+            for other_data in all_resumes.values():
                 m = re.search(r"\b(\d{1,3})\s*LeetCode\b", other_data.get("full_text", ""), re.IGNORECASE)
                 if m:
                     all_counts.append(int(m.group(1)))
@@ -142,7 +142,7 @@ def check_factuality(
     return {
         "factuality_score": factuality_score,
         "flags": flags,
-        "resume_skills": sorted(list(set(resume_skills))),
+        "resume_skills": sorted(set(resume_skills)),
     }
 
 
@@ -161,8 +161,8 @@ class EvaluationAgent:
         self,
         resume_text: str,
         jd_text: str,
-        all_resumes_data: Optional[Dict[str, Dict[str, any]]] = None,
-    ) -> Dict[str, Any]:
+        all_resumes_data: dict[str, dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """Execute the full evaluation pipeline.
         
         Args:
@@ -180,7 +180,7 @@ class EvaluationAgent:
         from app.tools.jdp_parser import parse_required_skills, parse_responsibilities
         jd_required_skills = parse_required_skills(jd_text)
         jd_responsibilities = parse_responsibilities(jd_text)
-        required_skills: Set[str] = set(jd_required_skills)
+        required_skills: set[str] = set(jd_required_skills)
         
         # Compute ATS match
         ats_match = compute_ats_match(resume_text, jd_text)
@@ -200,7 +200,7 @@ class EvaluationAgent:
             "relevance_percent": relevance,
             "factuality_score": factuality["factuality_score"],
             "flags": factuality["flags"],
-            "resume_skills": sorted(list(resume_skills)),
-            "matched_skills": sorted(list(resume_skills & required_skills)),
-            "missing_skills": sorted(list(required_skills - resume_skills)),
+            "resume_skills": sorted(resume_skills),
+            "matched_skills": sorted(resume_skills & required_skills),
+            "missing_skills": sorted(required_skills - resume_skills),
         }

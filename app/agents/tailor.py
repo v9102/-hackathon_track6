@@ -15,7 +15,7 @@ factual consistency constraints.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.agents.evaluator import EvaluationAgent
 from app.agents.revisor import RevisionAgent
@@ -29,11 +29,11 @@ class TailorAgent:
     def __init__(self, config=None):
         """Initialize the TailorAgent."""
         self.config = config or settings
-        self.role_kb: Optional[Dict[str, Any]] = None
+        self.role_kb: dict[str, Any] | None = None
         self.resume_skills: set[str] = set()
         self.match_score: float = 0.0
     
-    def parse_job_description(self, jd_text: str, title: str = "Unknown Role") -> Dict[str, Any]:
+    def parse_job_description(self, jd_text: str, title: str = "Unknown Role") -> dict[str, Any]:
         """Parse a job description and build the role knowledge base."""
         from app.tools.jdp_parser import build_role_kb
         self.role_kb = build_role_kb(
@@ -43,7 +43,7 @@ class TailorAgent:
         )
         return self.role_kb
     
-    def load_resume(self, resume_path: Path) -> Dict[str, Any]:
+    def load_resume(self, resume_path: Path) -> dict[str, Any]:
         """Load and analyze a candidate resume."""
         full_text = extract_text_from_pdf(resume_path)
         self.resume_skills = extract_skills_from_text(full_text)
@@ -54,7 +54,7 @@ class TailorAgent:
             "file_path": str(resume_path),
         }
     
-    def compute_match_score(self, required_skills: List[str]) -> float:
+    def compute_match_score(self, required_skills: list[str]) -> float:
         """Compute the match score between resume and job requirements."""
         if not required_skills:
             self.match_score = 0.0
@@ -66,13 +66,13 @@ class TailorAgent:
         self.match_score = len(intersection) / len(required_set)
         return self.match_score
     
-    def evaluate_resume(self, eval_text: str, jd_text: str) -> Dict[str, Any]:
+    def evaluate_resume(self, eval_text: str, jd_text: str) -> dict[str, Any]:
         """Evaluate resume factuality and ATS match against JD."""
         
         evaluator = EvaluationAgent()
         return evaluator.evaluate(eval_text, jd_text)
     
-    def revise_resume(self, evaluation: Dict[str, Any], max_revisions: int = 3) -> Dict[str, Any]:
+    def revise_resume(self, evaluation: dict[str, Any], max_revisions: int = 3) -> dict[str, Any]:
         """Run the revision loop based on evaluation flags."""
         
         revisor = RevisionAgent()
@@ -89,7 +89,8 @@ class TailorAgent:
         facts = self.evaluate_resume(tailored_text, "") if tailored_text else {"flags": []}
         
         content = "Resume Tailoring Report\n========================\n"
-        content += f"Role: {self.config.base_dir.name}\n"
+        role_title = (self.role_kb or {}).get("title", "Unknown Role")
+        content += f"Role: {role_title}\n"
         content += f"Match Score: {self.match_score:.1%}\n"
         content += f"Required Skills: {self.role_kb.get('required_skills', [])}\n"
         content += f"Matched Skills: {self.resume_skills & set(self.role_kb.get('required_skills', []))}\n"
@@ -107,9 +108,12 @@ class TailorAgent:
         self,
         jd_text: str,
         resume_path: Path,
-        tailored_output: Path = Path("storage/tailored_resume.pdf"),
-    ) -> Dict[str, Any]:
+        tailored_output: Path | None = None,
+    ) -> dict[str, Any]:
         """Execute the complete tailoring pipeline."""
+        output_path = tailored_output or settings.tailored_resume_path
+        settings.storage_dir.mkdir(parents=True, exist_ok=True)
+
         # Step 1: Parse JD
         self.parse_job_description(jd_text, title="SWE")
         
@@ -126,16 +130,16 @@ class TailorAgent:
         revision_log = self.revise_resume(evaluation, max_revisions=3)
         
         # Step 6: Render tailored resume
-        rendered_path = self.render_tailored_resume(resume_analysis["full_text"], tailored_output)
+        rendered_path = self.render_tailored_resume(resume_analysis["full_text"], output_path)
         
         # Compile results
-        results: Dict[str, Any] = {
+        results: dict[str, Any] = {
             "role_kb": self.role_kb,
             "resume_analysis": resume_analysis,
             "match_score": self.match_score,
             "evaluation": evaluation,
             "revision_log": revision_log,
-            "tailored_output": str(tailored_output),
+            "tailored_output": str(output_path),
             "rendered_path": str(rendered_path),
         }
         

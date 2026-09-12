@@ -91,7 +91,7 @@ if task == "1: JD Parser":
         if use_tavily and tavily_key:
             cmd += " --use-tavily"
         
-        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True)
+        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True, check=False)
         st.code(cmd)
         
         kb_path = WORK_DIR / "role_kb.json"
@@ -123,7 +123,7 @@ elif task == "2: Resume Tailor":
         role = st.text_input("Target Role:", "SWE")
         
         cmd = f"python3 resume_tailor.py --resume {selected_resume} --role {role} --kb {ROLE_KB_PATH}"
-        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True)
+        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True, check=False)
         st.code(cmd)
         
         st.success("Resume tailored successfully!")
@@ -191,7 +191,7 @@ elif task == "3: Evaluate Resume":
         jd_arg = f"--jd '{custom_jd}'" if custom_jd else ""
         
         cmd = f"python3 evaluate_resume.py --resume {eval_resume} --kb {ROLE_KB_PATH} {env_cmd} {jd_arg} --resumes-dir {resumes_dir}"
-        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True)
+        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True, check=False)
         st.code(cmd)
         
         st.success("Evaluation complete!")
@@ -257,7 +257,7 @@ elif task == "4: Revision Loop":
         resumes_dir = st.text_input("Resumes directory:", str(WORK_DIR / "Resumes"))
         
         cmd = f"python3 revisor.py --eval {eval_file} --tailoring {tailoring_file} --resumes-dir {resumes_dir} --max-revisions {max_revisions}"
-        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True)
+        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True, check=False)
         st.code(cmd)
         
         st.success("Revision process complete!")
@@ -316,7 +316,7 @@ elif task == "5: Change Report":
     
     if st.button("Generate Reports") and tailoring_sel and revisions_sel:
         cmd = f"python3 change_report.py --tailoring {tailoring_sel} --revisions {revisions_sel}"
-        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True)
+        result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True, check=False)
         st.code(cmd)
         
         st.success("Reports generated!")
@@ -370,7 +370,7 @@ else:
         
         for i, (name, cmd) in enumerate(steps):
             status_container.info(f"Running: {name}")
-            result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True, timeout=60000)
+            result = subprocess.run(cmd, cwd=WORK_DIR, capture_output=True, text=True, timeout=60000, check=False)
             progress_bar.progress((i + 1) / len(steps))
             
             if result.returncode != 0:

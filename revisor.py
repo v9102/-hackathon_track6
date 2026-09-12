@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 """Revisor - revises tailored resumes based on evaluation flags."""
 
 from __future__ import annotations
@@ -8,7 +9,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     from fpdf import FPDF
@@ -17,7 +18,7 @@ except ImportError:
     HAS_FPDF = False
 
 
-def load_evaluation(eval_path: Path) -> Dict[str, Any]:
+def load_evaluation(eval_path: Path) -> dict[str, Any]:
     """Load evaluation JSON."""
     with open(eval_path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -27,7 +28,7 @@ def auto_rephrase_bullet(
     bullet: str,
     missing_skill: str,
     current_skills: set[str],
-) -> Optional[str]:
+) -> str | None:
     """Auto-rephrase a flagged bullet to include the missing skill while staying truthful."""
     bullet_lower = bullet.lower()
     # Check if the skill can truthfully be added
@@ -76,11 +77,11 @@ def auto_rephrase_bullet(
 
 
 def revise_resume(
-    evaluation: Dict[str, Any],
-    tailoring_report: Dict[str, any],
-    all_resumes: Dict[str, Dict[str, any]],
+    evaluation: dict[str, Any],
+    tailoring_report: dict[str, any],
+    all_resumes: dict[str, dict[str, any]],
     max_revisions: int = 3,
-) -> Dict[str, any]:
+) -> dict[str, any]:
     """Revise the resume based on evaluation flags."""
     flags = evaluation.get("flags", [])
     revision_log = {
@@ -190,7 +191,7 @@ def revise_resume(
 
 def render_revised_pdf(
     original_text: str,
-    changes: List[Dict[str, str]],
+    changes: list[dict[str, str]],
     output_path: Path,
 ) -> None:
     """Render a revised resume PDF reflecting the changes."""
@@ -252,8 +253,8 @@ def main():
                 for page in pdf.pages:
                     text += page.extract_text() + "\n"
                 all_resumes[pdf_file.name] = {"full_text": text}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.warning(f"Revision error: {e}")
 
     # Run revision loop
     revision_log = revise_resume(

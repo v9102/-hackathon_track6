@@ -142,7 +142,7 @@ if page == "Pipeline":
                         st.success("Pipeline complete! Check the results below.")
                         
                     except Exception as e:
-                        st.error(f"Pipeline failed: {e!s}")
+                        logger.error(f"Pipeline failed: {e}")
                         st.exception(e)
         
         # Display results if available

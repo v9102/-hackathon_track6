@@ -1,105 +1,172 @@
-"""Tests for the agents module - Tailor, Evaluator, Revisor."""
+"""Mocked unit tests for app.agents — no live LLM or network calls."""
 
+from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
+
+import pytest
 
 from app.agents.evaluator import EvaluationAgent
 from app.agents.revisor import RevisionAgent
 from app.agents.tailor import TailorAgent
 
+MOCK_ROLE_KB: dict[str, Any] = {
+    "title": "SWE",
+    "years_exp": 3,
+    "required_skills": ["Python", "React", "SQL"],
+    "preferred_skills": ["TypeScript"],
+    "degree": "B.S.",
+    "tools": ["Python", "React"],
+    "responsibilities": ["Build web applications"],
+    "red_flags": [],
+}
+
+MOCK_EVALUATION: dict[str, Any] = {
+    "ats_match_percent": 85.0,
+    "relevance_percent": 66.67,
+    "factuality_score": 90.0,
+    "flags": [],
+    "resume_skills": ["Python", "React"],
+    "matched_skills": ["Python", "React"],
+    "missing_skills": ["SQL"],
+}
+
+MOCK_REVISION: dict[str, Any] = {
+    "revisions": [],
+    "final_ats": 85.0,
+    "final_relevance": 66.67,
+    "final_factuality": 90.0,
+    "status": "completed",
+    "total_flags": 0,
+    "reason": "No flags - resume passes factuality check",
+}
+
 
 class TestTailorAgent:
-    """Test cases for the Tailor Agent."""
-
-    def test_initialization(self):
-        """Test TailorAgent can be instantiated."""
+    def test_initialization(self) -> None:
         agent = TailorAgent()
-        assert agent is not None
         assert agent.role_kb is None
+        assert agent.resume_skills == set()
+        assert agent.match_score == 0.0
 
-    def test_parse_job_description(self):
-        """Test job description parsing."""
-        jd_text = "Software Engineer position. 3+ years experience. Required skills: React, Node.js."
-        agent = TailorAgent()
-        kb = agent.parse_job_description(jd_text)
-        assert kb is not None
-        assert "title" in kb
-
-    def test_compute_match_score(self):
-        """Test match score computation."""
+    def test_compute_match_score(self) -> None:
         agent = TailorAgent()
         agent.resume_skills = {"Python", "React", "SQL"}
         score = agent.compute_match_score(["Python", "JavaScript", "React"])
-        assert 0 <= score <= 1
-        # 2 out of 3 = 0.667
-        assert abs(score - 2/3) < 0.01
+        assert abs(score - 2 / 3) < 0.01
 
-    def test_evaluate_resume(self):
-        """Test resume evaluation."""
-        jd_text = "Python Django React Position. Required skills: Python, Django, React."
-        agent = TailorAgent()
-        evaluation = agent.evaluate_resume(jd_text, jd_text)
-        assert "ats_match_percent" in evaluation
-        assert "relevance_percent" in evaluation
-        assert "factuality_score" in evaluation
+    def test_run_pipeline_orchestration_with_mocked_dependencies(
+        self,
+        mocker: pytest.Mock,
+        tmp_path: Path,
+    ) -> None:
+        """Verify orchestration flow maps mocked payloads into the result dict."""
+        resume_path = tmp_path / "resume.pdf"
+        resume_path.write_bytes(b"%PDF-fake")
+        output_path = tmp_path / "tailored_report.txt"
 
-    def test_revise_resume(self):
-        """Test resume revision loop."""
-        jd_text = "Python Django React Position."
+        mocker.patch(
+            "app.tools.jdp_parser.build_role_kb",
+            return_value=MOCK_ROLE_KB,
+        )
+        mocker.patch(
+            "app.agents.tailor.extract_text_from_pdf",
+            return_value="Python React experience with SQL databases.",
+        )
+        mocker.patch(
+            "app.agents.tailor.extract_skills_from_text",
+            return_value={"Python", "React"},
+        )
+        mock_evaluate = mocker.patch.object(
+            EvaluationAgent,
+            "evaluate",
+            return_value=MOCK_EVALUATION,
+        )
+        mock_revise = mocker.patch.object(
+            RevisionAgent,
+            "revise",
+            return_value=MOCK_REVISION,
+        )
+
         agent = TailorAgent()
-        evaluation = agent.evaluate_resume(jd_text, jd_text)
-        revision = agent.revise_resume(evaluation, max_revisions=2)
-        assert "revisions" in revision
-        assert "status" in revision
+        jd_text = "Required skills: Python, React, SQL. 3+ years experience."
+        results = agent.run_pipeline(
+            jd_text=jd_text,
+            resume_path=resume_path,
+            tailored_output=output_path,
+        )
+
+        # Pipeline evaluation + render_tailored_resume both invoke the evaluator.
+        assert mock_evaluate.call_count == 2
+        mock_evaluate.assert_any_call(
+            "Python React experience with SQL databases.",
+            jd_text,
+        )
+        mock_revise.assert_called_once_with(MOCK_EVALUATION, 3)
+
+        # Response mapping into the pipeline result dictionary.
+        assert results["role_kb"] == MOCK_ROLE_KB
+        assert results["evaluation"] == MOCK_EVALUATION
+        assert results["revision_log"] == MOCK_REVISION
+        assert results["match_score"] == pytest.approx(2 / 3, rel=1e-2)
+        assert "Python" in results["resume_analysis"]["skills"]
+        assert results["rendered_path"] == str(output_path.resolve())
+        assert output_path.exists()
+
+    def test_run_pipeline_short_circuits_on_empty_resume_text(
+        self,
+        mocker: pytest.Mock,
+        tmp_path: Path,
+    ) -> None:
+        """Empty PDF text should still produce a structured, non-crashing result."""
+        resume_path = tmp_path / "empty.pdf"
+        resume_path.write_bytes(b"%PDF-empty")
+        output_path = tmp_path / "report.txt"
+
+        mocker.patch("app.tools.jdp_parser.build_role_kb", return_value=MOCK_ROLE_KB)
+        mocker.patch("app.agents.tailor.extract_text_from_pdf", return_value="")
+        mocker.patch("app.agents.tailor.extract_skills_from_text", return_value=set())
+        mocker.patch.object(EvaluationAgent, "evaluate", return_value=MOCK_EVALUATION)
+        mocker.patch.object(RevisionAgent, "revise", return_value=MOCK_REVISION)
+
+        agent = TailorAgent()
+        results = agent.run_pipeline("Required skills: Python.", resume_path, output_path)
+
+        assert results["match_score"] == 0.0
+        assert results["resume_analysis"]["skills"] == set()
 
 
 class TestEvaluationAgent:
-    """Test cases for the Evaluation Agent."""
-
-    def test_evaluate_basic(self):
-        """Test basic evaluation functionality."""
+    def test_evaluate_basic(self) -> None:
         agent = EvaluationAgent()
         resume_text = "Python Django React SQL Git"
         jd_text = "Python Django React Position. Required skills: Python, Django, React."
-        
+
         evaluation = agent.evaluate(resume_text, jd_text)
-        assert "ats_match_percent" in evaluation
-        assert "relevance_percent" in evaluation
-        assert "factuality_score" in evaluation
-        assert "flags" in evaluation
+
         assert 0 <= evaluation["ats_match_percent"] <= 100
         assert 0 <= evaluation["relevance_percent"] <= 100
         assert 0 <= evaluation["factuality_score"] <= 100
+        assert isinstance(evaluation["flags"], list)
 
-    def test_evaluate_with_flags(self):
-        """Test evaluation that produces flags."""
+    def test_evaluate_with_responsibility_flags(self) -> None:
+        """Flags are raised from responsibility cross-checks, not missing JD keywords."""
         agent = EvaluationAgent()
-        # Resume missing skills present in JD
-        resume_text = "Python SQL"  # Missing Django, React
-        jd_text = "Python Django React Position. Required skills: Python, Django, React."
-        
+        resume_text = "Python SQL"
+        jd_text = (
+            "Required skills: Python.\n"
+            "Responsibilities:\n"
+            "- Built scalable Django microservices for production workloads"
+        )
+
         evaluation = agent.evaluate(resume_text, jd_text)
-        assert len(evaluation["flags"]) > 0  # Should have flags for missing skills
-        assert evaluation["factuality_score"] < 100  # Lower score due to flags
+        assert len(evaluation["flags"]) > 0
+        assert evaluation["factuality_score"] < 100
 
 
 class TestRevisionAgent:
-    """Test cases for the Revision Agent."""
-
-    def test_revision_initial_status(self):
-        """Test revision starts with no flags addressed."""
-        agent = RevisionAgent()
-        evaluation = {
-            "flags": [{"claim": "Resume claims Python but doesn't mention it", "severity": "medium"}],
-            "ats_match_percent": 50.0,
-            "relevance_percent": 50.0,
-            "factuality_score": 75,
-        }
-        revision = agent.revise(evaluation, max_revisions=3)
-        assert "revisions" in revision
-        assert revision["status"] in ["completed", "max_revisions_reached"]
-
-    def test_revision_no_flags(self):
-        """Test revision when no flags exist."""
+    def test_revision_no_flags(self) -> None:
         agent = RevisionAgent()
         evaluation = {
             "flags": [],
@@ -109,4 +176,16 @@ class TestRevisionAgent:
         }
         revision = agent.revise(evaluation, max_revisions=3)
         assert revision["status"] == "completed"
-        assert len(revision["revisions"]) == 0
+        assert revision["revisions"] == []
+
+    def test_revision_initial_status_with_flags(self) -> None:
+        agent = RevisionAgent()
+        evaluation = {
+            "flags": [{"claim": "Unsupported claim", "severity": "medium"}],
+            "ats_match_percent": 50.0,
+            "relevance_percent": 50.0,
+            "factuality_score": 75,
+        }
+        revision = agent.revise(evaluation, max_revisions=3)
+        assert revision["status"] in {"completed", "max_revisions_reached"}
+        assert len(revision["revisions"]) >= 1

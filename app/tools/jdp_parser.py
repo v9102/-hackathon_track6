@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def extract_skills_from_text(text: str) -> set[str]:
@@ -82,7 +82,7 @@ def parse_required_skills(jd_text: str) -> list[str]:
         if re.search(rf"\b{re.escape(term)}\b", jd_text, re.IGNORECASE):
             skills.add(term)
     
-    return sorted(list(skills))
+    return sorted(skills)
 
 
 def parse_preferred_skills(jd_text: str) -> list[str]:
@@ -131,10 +131,10 @@ def parse_preferred_skills(jd_text: str) -> list[str]:
                 item = s.strip(":|- ")
                 if s and len(s) > 1:
                     skills.add(s)
-    return sorted(list(skills))[:10]
+    return sorted(skills)[:10]
 
 
-def parse_years_exp(jd_text: str) -> Optional[int]:
+def parse_years_exp(jd_text: str) -> int | None:
     """Extract years of experience requirement."""
     matches = re.findall(
         r"\b(\d+)[\s+]\+?[\s]?years?[:\s]?(?:of\s+)?(?:experience|exp)\b",
@@ -148,7 +148,7 @@ def parse_years_exp(jd_text: str) -> Optional[int]:
     return None
 
 
-def parse_degree_req(jd_text: str) -> Optional[str]:
+def parse_degree_req(jd_text: str) -> str | None:
     """Extract degree requirement from JD text."""
     patterns = [
         r"(?:B\.?S?\.?|BA|BS|B\.?Tech|B\.?Eng)(?:\s+(?:required|preferred))?",
@@ -211,7 +211,7 @@ def build_role_kb(
     title: str = "Unknown Role",
     jd_text: str | None = None,
     use_tavily: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a role knowledge base from JD text."""
     required_skills = parse_required_skills(jd_text or "")
     preferred_skills = parse_preferred_skills(jd_text or "")
@@ -228,7 +228,7 @@ def build_role_kb(
     if years_exp is None:
         red_flags.append("Years of experience not clearly specified")
     
-    role_kb: Dict[str, Any] = {
+    role_kb: dict[str, Any] = {
         "title": title,
         "years_exp": years_exp,
         "required_skills": required_skills,

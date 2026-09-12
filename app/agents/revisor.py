@@ -15,7 +15,7 @@ or experience, only rephrases existing evidence or removes unsupported claims.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class RevisionAgent:
@@ -24,7 +24,7 @@ class RevisionAgent:
     def __init__(self) -> None:
         """Initialize the RevisionAgent."""
     
-    def revise(self, evaluation: Dict[str, Any], max_revisions: int = 3) -> Dict[str, Any]:
+    def revise(self, evaluation: dict[str, Any], max_revisions: int = 3) -> dict[str, Any]:
         """Execute the revision loop based on evaluation flags.
         
         Args:
@@ -35,7 +35,7 @@ class RevisionAgent:
             Revision log with changes, reasons, and final state
         """
         flags = evaluation.get("flags", [])
-        revision_log: Dict[str, Any] = {
+        revision_log: dict[str, Any] = {
             "revisions": [],
             "final_ats": evaluation.get("ats_match_percent", 0),
             "final_relevance": evaluation.get("relevance_percent", 0),
@@ -51,14 +51,14 @@ class RevisionAgent:
         dict(evaluation)
         
         for revision_num in range(1, max_revisions + 1):
-            revision: Dict[str, Any] = {
+            revision: dict[str, Any] = {
                 "step": revision_num,
                 "flags_addressed": [],
                 "changes": [],
                 "reason": "",
             }
             
-            addressed_flags: List[str] = []
+            addressed_flags: list[str] = []
             
             for flag in flags:
                 flag_text = flag.get("claim", "")
@@ -121,7 +121,7 @@ class RevisionAgent:
         
         return revision_log
     
-    def _try_rephrase_flag(self, flag: Dict[str, Any]) -> Optional[str]:
+    def _try_rephrase_flag(self, flag: dict[str, Any]) -> str | None:
         """Attempt to rephrase a flagged bullet to include missing skill.
         
         Args:

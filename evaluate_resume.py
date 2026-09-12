@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 """Resume Evaluator - evaluates tailored resumes against job descriptions."""
 
 from __future__ import annotations
@@ -8,7 +9,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Set
+from typing import Any
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
@@ -22,7 +23,7 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
     return result.stdout
 
 
-def extract_skills_from_text(text: str) -> Set[str]:
+def extract_skills_from_text(text: str) -> set[str]:
     """Extract skill mentions from text."""
     common_skills = [
         "Python", "Java", "Go", "Rust", "TypeScript", "JavaScript", "C++", "C#",
@@ -39,7 +40,7 @@ def extract_skills_from_text(text: str) -> Set[str]:
         "Agile", "Scrum",
         "Firebase", "Azure OpenAI",
     ]
-    found: Set[str] = set()
+    found: set[str] = set()
     for skill in common_skills:
         if re.search(rf"\b{re.escape(skill)}\b", text, re.IGNORECASE):
             found.add(skill)
@@ -70,7 +71,7 @@ def compute_ats_match(resume_text: str, jd_text: str) -> float:
     return round(len(intersection) / len(jd_skills) * 100, 2)
 
 
-def compute_relevance(resume_skills: Set[str], required_skills: Set[str]) -> float:
+def compute_relevance(resume_skills: set[str], required_skills: set[str]) -> float:
     """Compute relevance % = match_score from Task 2."""
     if not required_skills:
         return 0.0
@@ -80,9 +81,9 @@ def compute_relevance(resume_skills: Set[str], required_skills: Set[str]) -> flo
 
 def check_factuality(
     resume_text: str,
-    role_kb: Dict[str, Any],
-    all_resumes: Dict[str, Dict[str, any]],
-) -> List[Dict[str, str]]:
+    role_kb: dict[str, Any],
+    all_resumes: dict[str, dict[str, any]],
+) -> list[dict[str, str]]:
     """Check factuality - flag claims not supported in resume text or known profile."""
     flags = []
 
@@ -201,8 +202,8 @@ def main():
                     "full_text": text,
                     "skills": extract_skills_from_text(text),
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                    logging.warning(f"Failed: {e}")
 
     # Factuality check
     flags = check_factuality(resume_text, role_kb, all_resumes)
@@ -213,10 +214,10 @@ def main():
         "relevance_percent": relevance_score,
         "factuality_score": round(max(0, 100 - len(flags) * 15), 2),  # deduct 15 per flag
         "flags": flags,
-        "resume_skills": sorted(list(resume_skills)),
-        "required_skills": sorted(list(required_skills)),
-        "matched_skills": sorted(list(resume_skills & required_skills)),
-        "missing_skills": sorted(list(required_skills - resume_skills)),
+        "resume_skills": sorted(resume_skills),
+        "required_skills": sorted(required_skills),
+        "matched_skills": sorted(resume_skills & required_skills),
+        "missing_skills": sorted(required_skills - resume_skills),
     }
 
     # Write evaluation

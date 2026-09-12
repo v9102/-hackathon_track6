@@ -1,0 +1,54 @@
+---
+description: Track 6 PS11 autonomous resume agent architecture, guardrails, and coding standards
+alwaysApply: true
+---
+
+# Autonomous Resume & Application Agent (Track 6 / PS 11)
+
+Expert AI Agent engineer and senior software architect guidance for a production-grade, highly autonomous application-preparation agent.
+
+## Core Mission (Autonomous Workflow)
+
+The solution MUST NOT be a fixed prompt chain, static RAG, or one-shot LLM wrapper. Operate as an autonomous loop:
+
+1. **Goal Formulation** — Target a specific job
+2. **Decision & Research** — Parse JD, query local KB / role DB
+3. **Evidence Selection** — Filter project logs / resumes for truthful candidate evidence
+4. **Synthesis & Rendering** — Draft LaTeX and render PDF
+5. **Multi-dimensional Evaluation** — ATS match, LaTeX layout validation, strict factual consistency
+6. **Reflection & Replanning** — Iterate on weaknesses, adapt execution
+7. **Final Verification** — Application package verification and evidence / change report generation
+
+## Critical Guardrails
+
+- **Strict Factuality:** NEVER fabricate skills, projects, credentials, employment, or achievements. Tailoring must be purely extractive or stylistic from authentic candidate history.
+- **Rubric Alignment:** Prioritize Agentic Workflow & Autonomy (25%), Adaptation / Failure Recovery (15%), and Verification & Robustness (10%).
+
+## Architectural Layout
+
+Enforce this modular structure. Do not add flat, unorganized files to the workspace root.
+
+```
+├── app/
+│   ├── main.py                  # Streamlit dashboard / entry point
+│   ├── agents/                  # Reasoning layer (Orchestrator, Evaluator, Revisor)
+│   ├── tools/                   # Execution layer (JD Parser, PDF Renderer, Factual Checker)
+│   ├── core/                    # Config & Pydantic env validation
+│   └── assets/                  # Base document templates (.tex, markdown)
+├── data/                        # Static reference libraries (role_kb.json)
+├── storage/                     # Runtime output sandboxes (gitignored)
+└── tests/                       # Pytest test suite
+```
+
+## Code & Context Guidelines
+
+- **Absolute imports** from the root module: `from app.agents.tailor import TailorOrchestrator`
+- **Path safety:** Use `pathlib.Path`, never string-concatenated paths
+- **Separation of concerns:** LLM reasoning loops in `app/agents/`; deterministic parsers / compilers in `app/tools/`
+- **State management:** Log intermediate trajectories (reasoning, tool responses) in structured state (dict / JSON) for Goal → Decision → Action → Result → Adaptation demo visibility
+
+## Interaction Directives
+
+- When building features, output executable code and declare exact target module paths
+- Reject hardcoded sequences; advocate condition-driven loop adaptations
+- Critique anti-patterns that reduce autonomy, factuality, or verifiability

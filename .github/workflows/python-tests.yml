@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
@@ -33,8 +33,17 @@ jobs:
       - name: Type Check with MyPy
         run: |
           pip install mypy
-          mypy jdp_parser.py resume_tailor.py evaluate_resume.py revisor.py change_report.py
+          mypy main.py dashboard.py jdp_parser.py resume_tailor.py evaluate_resume.py revisor.py change_report.py
 
       - name: Run Tests
         run: |
           pytest tests/ -v
+
+      - name: Pipeline Smoke Test
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended poppler-utils
+          python -m app.main run > /tmp/pipeline.out 2>&1
+          cat /tmp/pipeline.out
+          test "$(ls storage/runs/*/tailored_resume_final.pdf | wc -l)" -ge 1
+          grep -q "Verification       : True" /tmp/pipeline.out

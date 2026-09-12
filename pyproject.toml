@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "resume-tailoring"
+version = "1.0.0"
+description = "Agentic resume tailoring system for hackathon"
+requires-python = ">=3.8"
+keywords = ["resume", "tailoring", "ATS", "agentic", "AI"]
+
+dependencies = [
+    "fpdf2==2.8.7",
+    "PyPDF2>=3.0.1",
+    "requests>=2.28.0",
+]
+
+[project.scripts]
+jdp_parser = "jdp_parser:main"
+resume_tailor = "resume_tailor:main"
+evaluate_resume = "evaluate_resume:main"
+revisor = "revisor:main"
+change_report = "change_report:main"
+
+[project.urls]
+Homepage = "https://github.com/v9102/-hackathon_track6"

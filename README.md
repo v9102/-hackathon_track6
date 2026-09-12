@@ -1,98 +1,194 @@
 # Resume Tailoring System - Hackathon Track 6
 
-Automated, agentic resume tailoring system that parses job descriptions, matches resumes to role requirements, evaluates factual consistency, and revises resumes through an automated loop.
+**Professional Agentic AI Resume Tailoring System**
 
-## Project Structure
+An automated, truthful resume tailoring system that parses job descriptions, matches resumes to role requirements, evaluates factual consistency, and revises resumes through an automated loop.
+
+## 📦 Quickstart Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/v9102/-hackathon_track6.git
+cd -hackathon_track6
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Or install as package
+pip install -e .
+```
+
+## 🚀 Quickstart Commands (Task 1-5)
+
+```bash
+# Task 1: Parse Job Description
+python3 jdp_parser.py --jd "Software Engineer - Full Stack React Node.js position. 3+ years experience required. Required skills: React, Node.js, JavaScript, SQL, Git."
+
+# Task 2: Tailor Resume (uses provided LaTeX template)
+python3 resume_tailor.py --resume Resumes/ShaunakMishra_Resume.pdf --role SWE --kb role_kb.json
+
+# Task 3: Evaluate Resume
+python3 evaluate_resume.py --resume tailored_resume.pdf --kb role_kb.json --jd "Software Engineer JD text"
+
+# Task 4: Revision Loop
+python3 revisor.py --eval evaluation.json --tailoring tailoring_report_resume.json --resumes-dir Resumes
+
+# Task 5: Generate Reports
+python3 change_report.py --tailoring tailoring_report_resume.json --revisions revision_log.json
+
+# Task 6: Full Pipeline (Streamlit Dashboard)
+streamlit run dashboard.py
+```
+
+## 🏗️ Project Structure
 
 ```
-hackathon_track6/
-├── jdp_parser.py           # Task 1: Job Description Parser
-├── resume_tailor.py        # Task 2: Resume Tailoring (LaTeX template)
-├── evaluate_resume.py      # Task 3: ATS/Factuality Evaluator
-├── revisor.py             # Task 4: Revision Loop
-├── change_report.py        # Task 5: Change/Evidence Report
-├── requirements.txt        # Python dependencies
-├── README.md               # This file
-├── demo_video_script.txt   # Demo video outline
-├── evidence_report.json    # Machine-readable report
-├── role_kb.json            # Output from JD parser
-├── tailored_resume.pdf     # LaTeX-compiled tailored resume
-├── evaluation.json         # ATS/factuality scores
-├── revision_log.json       # Revision history
+-hackathon_track6/
+├── .github/                   # GitHub Actions & CI/CD
+│   └── workflows/
+│       └── python-tests.yml
+├── .gitignore                # Git ignore rules
+├── .env.example              # Environment variable templates
+├── pyproject.toml            # Package dependencies & entry points
+├── requirements.txt          # Pinned dependencies
+├── README.md                 # This file
+├── demo_video_script.txt     # Demo video outline
+├── evidence_report.json      # Machine-readable report
+├── role_kb.json              # JD parser output
+├── tailored_resume.pdf       # LaTeX-compiled tailored resume
+├── evaluation.json           # ATS/factuality scores
+├── revision_log.json         # Revision history
 ├── tailoring_report_resume.json
 ├── ShaunakMishra_Resume.tex  # LaTeX template (provided format)
-├── Resumes/                # Resume PDFs for testing
+├── Resumes/                  # Resume PDFs for testing
 │   ├── ShaunakMishra_Resume.pdf
 │   ├── AI_ML_Engineer_Resume.pdf
 │   └── DevOps_Engineer_Resume.pdf
-└── .git/                   # Git repository
+├── tests/                    # Test suite
+│   ├── test_basic.py         # Basic functionality tests
+│   └── test_agents.py        # Agent behavior tests
+├── jdp_parser.py             # Task 1: JD Parser
+├── resume_tailor.py          # Task 2: Resume Tailor
+├── evaluate_resume.py        # Task 3: ATS/Factuality Evaluator
+├── revisor.py                # Task 4: Revision Loop
+├── change_report.py          # Task 5: Change/Evidence Report
+├── dashboard.py              # Streamlit Web Dashboard
+└── main.py                   # App entry point
 ```
 
-## Quickstart
+## 🛠️ Architecture
 
-```bash
-# 1. Clone or copy the repository
-cp -r /path/To/Monetize ./hackathon_track6
-cd hackathon_track6
+### Module Organization
 
-# 2. Task 1: Parse Job Description
-python3 jdp_parser.py --jd "Software Engineer - Full Stack React Node.js position. 3+ years experience required. Required skills: React, Node.js, JavaScript, SQL, Git."
+| Module | Responsibility | Entry Point |
+|--------|---------------|-------------|
+| `jdp_parser.py` | Job description parsing | `python3 jdp_parser.py` |
+| `resume_tailor.py` | LaTeX resume tailoring | `python3 resume_tailor.py` |
+| `evaluate_resume.py` | ATS + factuality scoring | `python3 evaluate_resume.py` |
+| `revisor.py` | Automated revision loop | `python3 revisor.py` |
+| `change_report.py` | Human + machine-readable reports | `python3 change_report.py` |
+| `dashboard.py` | Web interface | `streamlit run dashboard.py` |
+| `main.py` | Package entry point | `jdp_parser:main` etc. |
 
-# 3. Task 2: Tailor Resume (uses provided LaTeX template)
-python3 resume_tailor.py --resume Resumes/ShaunakMishra_Resume.pdf --role SWE --kb role_kb.json
+### Data Flow
 
-# 4. Task 3: Evaluate Resume
-python3 evaluate_resume.py --resume tailored_resume.pdf --kb role_kb.json --jd "Software Engineer JD text"
-
-# 5. Task 4: Revision Loop
-python3 revisor.py --eval evaluation.json --tailoring tailoring_report_resume.json --resumes-dir Resumes
-
-# 6. Task 5: Generate Reports
-python3 change_report.py --tailoring tailoring_report_resume.json --revisions revision_log.json
+```text
+JD Text
+   ↓
+jdp_parser.py → role_kb.json
+   ↓
+resume_tailor.py → tailored_resume.pdf + tailoring_report.json
+   ↓
+evaluate_resume.py → evaluation.json (ATS %, relevance %, flags)
+   ↓
+revisor.py → revision_log.json (revised resume + changes)
+   ↓
+change_report.py → change_report.txt + evidence_report.json
 ```
 
-## Key Features
+## ✅ Compliance Highlights
 
-- **Agentic workflow**: Parses JD → Tailors resume → Evaluates → Revises → Reports
 - **LaTeX template compliance**: Uses the provided `ShaunakMishra_Resume.tex` format throughout
 - **No content fabrication**: Only rephrases existing resume bullets or omits irrelevant sections
-- **Factual consistency**: Cross-checks claims across 3 resumes to catch unsupported claims
-- **Automated revision**: Up to 3 revision iterations to eliminate all flags
+- **All skills from actual resume**: Extracted via `pdftotext` + PyPDF2
+- **Agentic AI**: Autonomous goal pursuit, tool interaction, decision making, adaptation, verification
+- **Factuality cross-check**: Claims verified across 3 resumes + known profile
+- **Quickstart ready**: `cp -r Monetize ./hackathon_track6` then run tasks
+- **Professional CI**: GitHub Actions with linting and testing
+- **Package manageable**: `pyproject.toml` with pip install support
 
-## Output Files
+## 📊 Output Files Summary
 
-| File | Description |
-|------|-------------|
-| `role_kb.json` | Role knowledge base extracted from JD |
-| `tailored_resume.pdf` | Resume tailored to the target role (LaTeX format) |
-| `evaluation.json` | ATS match %, relevance %, factuality score, and flags |
-| `revision_log.json` | Step-by-step revision history |
-| `tailoring_report_resume.json` | What was kept/removed/rewritten and reasons |
-| `evidence_report.json` | Machine-readable data for judges |
-| `change_report.txt` | Human-readable summary for reviewers |
+| File | Description | Format |
+|------|-------------|--------|
+| `role_kb.json` | Role knowledge base | JSON |
+| `tailored_resume.pdf` | Tailored resume | LaTeX PDF |
+| `evaluation.json` | ATS + factuality scores | JSON |
+| `revision_log.json` | Revision history | JSON |
+| `tailoring_report.json` | Tailoring decisions | JSON |
+| `evidence_report.json` | Machine-readable for judges | JSON |
+| `change_report.txt` | Human-readable summary | TXT |
 
-## Compliance Highlights
+## 🚀 Development
 
-✅ Uses the provided LaTeX template format (no fpdf2 or docx generation)  
-✅ All skills/education extracted from actual resume text  
-✅ Agentic AI: autonomous goal pursuit, tool interaction, decision making, adaptation, verification  
-✅ Quickstart: `cp -r Monetize ./hackathon_track6` then run tasks  
-✅ Dashboard available: `streamlit run dashboard.py`  
-✅ Submission filename format: `TechRebels_video_agentic` (team name format)
+### Local Development
 
-## Demo Video Outline
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
 
-- **Goal**: Build a truthful, automated resume tailoring system
-- **Decision**: Select resume based on JD match
-- **Action**: Run `jdp_parser → resume_tailor → evaluate → revise`
-- **Intermediate Result**: 82% ATS match, 3 unsupported claims removed
-- **Adaptation**: Revised 2 bullet points, swapped in 1 project from alternate resume
-- **Final Outcome**: Tailored resume ready to submit, with audit trail
+# Run tests
+pytest tests/ -v
 
-## Repository Stats
+# Lint code
+ruff check .
 
-- **Primary Language**: Python (81.8%)
-- **Secondary Language**: TeX (18.2%)
-- **Stars**: 0
-- **Forks**: 0
-- **Open Issues**: 0
+# Type check
+mypy jdp_parser.py resume_tailor.py evaluate_resume.py revisor.py change_report.py
+
+# Start dashboard
+streamlit run dashboard.py
+```
+
+### Adding New Features
+
+1. Add functionality to the relevant `.py` file
+2. Add tests to `tests/` directory
+3. Update `pyproject.toml` if new dependencies needed
+4. Run `pip install -e .` to reinstall
+5. Commit and push to trigger GitHub Actions
+
+## 📦 Package Installation
+
+```bash
+# Install from GitHub
+pip install git+https://github.com/v9102/-hackathon_track6.git
+
+# Or from local directory
+pip install -e ./
+
+# Install with dev dependencies
+pip install -e ".[dev]"
+```
+
+## 👥 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add some amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 📞 Contact
+
+- **GitHub**: @v9102
+- **Repository**: `-hackathon_track6`
+- **Project**: Resume Tailoring System
+
+---
+
+*Built with ❤️ for the Agentic AI Hackathon*

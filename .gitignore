@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.dist-info/
+*.wheel
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+
+# PDF files (generated, not source)
+*.pdf (if tracked separately)
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# IDE specific
+.vscode/
+.vim/
+*.swp
+*.sbd
+
+# Hackathon specific
+*.pdf (generated outputs)

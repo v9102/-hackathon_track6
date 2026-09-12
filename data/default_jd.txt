@@ -1,0 +1,17 @@
+Full Stack Software Engineer
+
+We are building AI-powered productivity tools and need a Full Stack Engineer who can
+ship end-to-end features.
+
+Required skills: Python, React, Node.js, JavaScript, TypeScript, SQL, PostgreSQL,
+Docker, Git.
+
+Preferred skills: Azure, AWS, Kubernetes, Next.js, React Native.
+
+Nice-to-have: GraphQL, Kafka.
+
+Responsibilities:
+- Design and implement backend services and APIs
+- Build responsive front-end interfaces
+- Write and maintain database schemas
+- Containerize and deploy services

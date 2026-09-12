@@ -95,7 +95,7 @@ def main() -> int:
     parser.add_argument("command", nargs="?", default="run", choices=["run", "demo"])
 
     sub = parser.add_argument_group("run options")
-    sub.add_argument("--jd", default="", help="Path to a JD text file (defaults to data/sample_jd.txt or built-in sample)")
+    sub.add_argument("--jd", default="", help="Path to a JD text file (defaults to data/default_jd.txt or built-in sample)")
     sub.add_argument("--resume-dir", default="", help="Directory (or PDF) with candidate resumes (default: Resumes/)")
     sub.add_argument("--template", default="", help="LaTeX template path (default: ShaunakMishra_Resume.tex)")
     sub.add_argument("--task", default="", help="Deprecated: legacy task modes removed; use 'run'.")

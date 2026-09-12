@@ -70,8 +70,8 @@ class Settings(BaseSettings):
 
     @property
     def default_jd_path(self) -> Path:
-        """Sample JD for demo runs."""
-        return self.base_dir / "data" / "sample_jd.txt"
+        """Sample JD fully covered by the candidate (accept-as-is path)."""
+        return self.base_dir / "data" / "default_jd.txt"
 
     @property
     def default_template_path(self) -> Path:
